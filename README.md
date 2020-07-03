@@ -1,0 +1,3 @@
+# podracer
+
+semester thesis idea
