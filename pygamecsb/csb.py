@@ -11,7 +11,7 @@ np.random.seed(1681)
 
 screen = pygame.display.set_mode(gameSize)
 game = pod.game(gameWidth, gameHeight, n_checkpoints, scale)
-pod = pod.csbpod(scale)
+pod = pod.csbpod(scale, game.checkpoints[0,:])
 background = pygame.image.load("img/back.png")
 background = pygame.transform.scale(background, (gameWidth, gameHeight))
 
@@ -24,6 +24,7 @@ while running:
     ################################
     # controller goes here here
     ################################
+
 
 
 

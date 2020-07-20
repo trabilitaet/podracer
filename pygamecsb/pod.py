@@ -1,8 +1,6 @@
 import math
 import numpy as np
-import os
 from scipy.spatial import distance
-import sys
 import pygame
 
 
@@ -16,12 +14,13 @@ class csbpod():
     friction = 0.85
     M_PI2 = 2.0 * np.pi
 
-    def __init__(self, scale, *args, **kwargs):
+    def __init__(self, scale, checkpoint, *args, **kwargs):
+        self.scale = scale
         # internal state
         # state= [theta, x, vx, y, vy]
         self.theta = np.random.randint(0, 359) * np.pi / 180.0
-        self.x = 0
-        self.y = 0
+        self.x = checkpoint[0]
+        self.y = checkpoint[1]
         self.vx = 0
         self.vy = 0
         self.x_prev = None
@@ -31,9 +30,10 @@ class csbpod():
         # pygame objects
         self.surface = pygame.image.load("img/pod.png")
         self.rect = self.surface.get_rect()
-        self.rect.x -= 64
-        self.rect.y -= 64
-        self.scale = scale
+        #start position and centering
+        self.rect.x = self.x - 64 
+        self.rect.y = self.y - 64
+
 
     def getAngle(self, target):
         # Get the angle [0,2*pi] of the vector going from pod's position to a target
