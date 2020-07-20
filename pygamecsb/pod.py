@@ -16,7 +16,7 @@ class csbpod():
     friction = 0.85
     M_PI2 = 2.0 * np.pi
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, scale, *args, **kwargs):
         # internal state
         # state= [theta, x, vx, y, vy]
         self.theta = np.random.randint(0, 359) * np.pi / 180.0
@@ -33,6 +33,7 @@ class csbpod():
         self.rect = self.surface.get_rect()
         self.rect.x -= 64
         self.rect.y -= 64
+        self.scale = scale
 
     def getAngle(self, target):
         # Get the angle [0,2*pi] of the vector going from pod's position to a target
@@ -92,9 +93,8 @@ class csbpod():
 
         print('x, y, vx, vy, theta')
         print(self.x, self.y, self.vx, self.vy, self.theta)
-        #self.rect.move_ip(self.vx, self.vy)
-        self.rect.x = self.x
-        self.rect.y = self.y
+        self.rect.x = self.x/self.scale
+        self.rect.y = self.y/self.scale
 
     def getState(self, game, running):
         # check for collision
@@ -113,10 +113,11 @@ class csbpod():
 
 class game:
     # Global game parameters
-    def __init__(self, width, height, n_checkpoints):
+    def __init__(self, width, height, n_checkpoints, scale):
         self.checkpointindex = 0
-        self.gameWidth = width
-        self.gameHeight = height
+        self.scale = scale
+        self.gameWidth = width*self.scale
+        self.gameHeight = height*self.scale
         self.n_checkpoints = n_checkpoints
         self.checkpointradius = self.gameHeight/70
         self.checkpoints = np.zeros((self.n_checkpoints, 2))
@@ -146,6 +147,6 @@ class game:
     def CheckpointRect(self, checkpoint):
         # create n rects and move to coordinates
         rect = self.checkpointSurface.get_rect()
-        rect.x += checkpoint[0] - 45
-        rect.y += checkpoint[1] - +45
+        rect.x += (checkpoint[0] - 45)/self.scale
+        rect.y += (checkpoint[1] - +45)/self.scale
         return rect
