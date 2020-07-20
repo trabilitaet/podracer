@@ -18,10 +18,10 @@ running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
-    target_x, target_y, x, y, vx, vy, running = pod.getState(game, running)
 
+    target_x, target_y, x, y, vx, vy, running = pod.getState(game, running)
     ################################
-    # calculate heading, thrust here
+    # controller goes here here
     ################################
 
 
