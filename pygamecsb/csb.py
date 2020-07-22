@@ -15,6 +15,13 @@ pod = pod.csbpod(scale, game.checkpoints[0,:])
 background = pygame.image.load("img/back.png")
 background = pygame.transform.scale(background, (gameWidth, gameHeight))
 
+####################################
+# enable test mode here:
+# test mode has no limits on thrust
+# -> thrust can be negative
+####################################
+test = True
+
 running = True
 while running:
     for event in pygame.event.get():
@@ -28,11 +35,16 @@ while running:
 
 
 
+
+
     heading_x, heading_y = target_x, target_y
     thrust = 20
     ################################
     # end controller here here
     ################################
+
+    if not test:
+        trust = max(0, min(100, thrust))
 
     # move pod
     pod.move(heading_x, heading_y, thrust)
