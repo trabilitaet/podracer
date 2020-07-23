@@ -2,6 +2,7 @@ import sys, pygame
 import pod
 import numpy as np
 import datetime
+import controller_A
 
 pygame.init()
 
@@ -15,6 +16,10 @@ game = pod.game(gameWidth, gameHeight, n_checkpoints, scale)
 pod = pod.csbpod(scale, game.checkpoints[0,:])
 background = pygame.image.load("img/back.png")
 background = pygame.transform.scale(background, (gameWidth, gameHeight))
+####################################
+# initialize controller
+control = controller_A.controller_A()
+####################################
 
 ####################################
 # enable test mode here:
@@ -36,19 +41,14 @@ while running:
     # controller goes here here
     ################################
 
-
-
-
-
-
-    heading_x, heading_y = target_x, target_y
-    thrust = 20
+    thrust, heading_x, heading_y = control.calculate(x,y, target_x, target_y)
+    
     ################################
     # end controller here here
     ################################
 
     if not test:
-        trust = max(0, min(100, thrust))
+        trust = np.clip(0,100, thrust)
 
     # move pod
     pod.move(heading_x, heading_y, thrust)
