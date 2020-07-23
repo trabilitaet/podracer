@@ -24,6 +24,9 @@ test = True
 
 running = True
 while running:
+tick = 0
+    tick +=1
+    print('tick: ', tick)
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
 
@@ -58,3 +61,6 @@ while running:
     pod.surface = pygame.transform.rotate(pod.surface, -pod.theta*180/np.pi)
     screen.blit(pod.surface, pod.rect)
     pygame.display.flip()
+
+pygame.quit()
+print('reached target in ', tick, ' ticks')

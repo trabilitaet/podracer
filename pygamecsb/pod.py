@@ -2,6 +2,7 @@ import math
 import numpy as np
 from scipy.spatial import distance
 import pygame
+import datetime
 
 
 class csbpod():
@@ -33,6 +34,11 @@ class csbpod():
         #start position and centering
         self.rect.x = self.x - 64 
         self.rect.y = self.y - 64
+
+        # logging
+        time = datetime.datetime.now()
+        filename = 'controller_A' + str(time) + '.log'
+        self.logfile =  open(filename, 'w')
 
 
     def getAngle(self, target):
@@ -78,7 +84,6 @@ class csbpod():
             self.theta -= self.M_PI2
         elif self.theta < 0.0:
             self.theta += self.M_PI2
-        print('theta: ', self.theta, 'omega: ', omega)
 
         # Update dynamics
         self.vx += math.cos(self.theta) * thrust
@@ -91,8 +96,8 @@ class csbpod():
         self.vx = int(0.85 * self.vx)
         self.vy = int(0.85 * self.vy)
 
-        print('x, y, vx, vy, theta')
-        print(self.x, self.y, self.vx, self.vy, self.theta)
+        self.log('x, y, vx, vy, theta:')
+        self.log(str(self.x) + str(self.y) + str(self.vx) + str(self.vy) + str(self.theta))
         self.rect.x = self.x/self.scale
         self.rect.y = self.y/self.scale
 
@@ -103,13 +108,15 @@ class csbpod():
         dist = distance.euclidean(coordinates, checkpoint)
         if dist < game.checkpointradius:
             running = not (self.checkpointindex == (game.n_checkpoints - 1))
-            print('target, coords, distance = ', checkpoint, coordinates, dist)
-            print('collision----------------------------------------------')
-            print('checkpoints remaining: ', str(game.n_checkpoints - game.checkpointindex - 1))
+            self.log('checkpoint collision----------------------------------------------')
+            self.log('target, coords, distance = ' + str(checkpoint) + str(coordinates) + str(dist))
+            self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))
             self.checkpointindex = game.checkpointindex + 1
             game.checkpointindex = self.checkpointindex
         return checkpoint[0], checkpoint[1], self.x, self.y, self.vx, self.vy, running
 
+    def log(self, message):
+        self.logfile.write(message)
 
 class game:
     # Global game parameters
@@ -141,7 +148,7 @@ class game:
                 if not tooclose:
                     checkpoints[index, :] = ckpt
                     break
-        print(checkpoints)
+        np.save('checkpoints', checkpoints)
         return checkpoints
 
     def CheckpointRect(self, checkpoint):
