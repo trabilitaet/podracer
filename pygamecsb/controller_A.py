@@ -35,7 +35,7 @@ class controller_A:
 		v = -math.sin(phi)*vx + math.cos(phi)*vy
 		return u, v
 
-	# def get_heading(self, x, y, r_control):
+	def get_heading(self, x, y, r_control):
 		r_control = np.clip(r_control, -max_ang_rotation, max_ang_rotation)
 		print(r_control)
 		x_heading = math.cos(r_control)
@@ -70,9 +70,9 @@ class controller_A:
 		# tau_r = -u_control*r_control - kr*(r_control - u_control)
 
 		# convert desired angular accelleration to target heading
-		x_heading, y_heading =  self.get_heading(x,y, r_control)
-		# x_heading = target_x
-		# y_heading = target_y
+		#x_heading, y_heading =  self.get_heading(x,y, r_control)
+		x_heading = target_x
+		y_heading = target_y
 
 		return thrust, x_heading, y_heading
 
