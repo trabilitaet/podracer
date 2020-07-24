@@ -9,7 +9,10 @@ import numpy as np
 max_ang_rotation = 0.1*np.pi
 
 class controller_A:
+	###########################################
+	# tune the gain here
 	ku = 0.025
+	##########################################
 	def __init__(self):
 		self.x_prev = 0
 		self.y_prev = 0
@@ -33,9 +36,12 @@ class controller_A:
 		return u, v
 
 	# def get_heading(self, x, y, r_control):
-	# 	r_control = np.clip(r_control, -max_ang_rotation, max_ang_rotation)
-	#
-	# 	return x_heading, y_heading
+		r_control = np.clip(r_control, -max_ang_rotation, max_ang_rotation)
+		print(r_control)
+		x_heading = math.cos(r_control)
+		y_heading = - math.sin(r_control)
+
+		return x_heading, y_heading
 
 	# idea of cascading control: calculate reference to track
 	def calculate(self, x, y, target_x, target_y):
@@ -63,11 +69,13 @@ class controller_A:
 		# apply control law (6) to get desired angular accelleration (tau_r)
 		# tau_r = -u_control*r_control - kr*(r_control - u_control)
 
-		#convert desired angular accelleration to target heading
-		#self.get_heading(x,y, r_control)
-		x_heading = target_x
-		y_heading = target_y
+		# convert desired angular accelleration to target heading
+		x_heading, y_heading =  self.get_heading(x,y, r_control)
+		# x_heading = target_x
+		# y_heading = target_y
 
 		return thrust, x_heading, y_heading
 
+	def getName(self):
+		return 'controller_A'
 		
