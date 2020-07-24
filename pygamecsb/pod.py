@@ -116,7 +116,7 @@ class csbpod():
         return checkpoint[0], checkpoint[1], self.x, self.y, self.vx, self.vy, running
 
     def log(self, message):
-        self.logfile.write(message)
+        self.logfile.writelines(message)
 
 class game:
     # Global game parameters
@@ -148,7 +148,7 @@ class game:
                 if not tooclose:
                     checkpoints[index, :] = ckpt
                     break
-        np.save('checkpoints', checkpoints)
+        np.savetxt('checkpoints', checkpoints)
         return checkpoints
 
     def CheckpointRect(self, checkpoint):

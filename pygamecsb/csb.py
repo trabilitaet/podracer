@@ -1,6 +1,7 @@
 import sys, pygame
 import pod
 import numpy as np
+import datetime
 
 pygame.init()
 
@@ -17,14 +18,14 @@ background = pygame.transform.scale(background, (gameWidth, gameHeight))
 
 ####################################
 # enable test mode here:
+test = True
 # test mode has no limits on thrust
 # -> thrust can be negative
 ####################################
-test = True
 
+tick = 0
 running = True
 while running:
-tick = 0
     tick +=1
     print('tick: ', tick)
     for event in pygame.event.get():
@@ -63,4 +64,9 @@ tick = 0
     pygame.display.flip()
 
 pygame.quit()
-print('reached target in ', tick, ' ticks')
+time = datetime.datetime.utcnow()
+filename = 'score' + str(time) + control.getName()
+logfile = open(filename, 'w')
+logfile.writelines('reached target in ' + str(tick) + ' ticks')
+logfile.writelines('')
+logfile.close()
