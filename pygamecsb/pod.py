@@ -37,7 +37,7 @@ class csbpod():
 
         # logging
         time = datetime.datetime.now()
-        filename = 'controller_A' + str(time) + '.log'
+        filename = 'controller_A' + '.log'
         self.logfile =  open(filename, 'w')
 
 
@@ -97,7 +97,7 @@ class csbpod():
         self.vy = int(0.85 * self.vy)
 
         self.log('x, y, vx, vy, theta:')
-        self.log(str(self.x) + str(self.y) + str(self.vx) + str(self.vy) + str(self.theta))
+        self.log(str(self.x) + ' ' + str(self.y) + ' ' + str(self.vx) + ' ' + str(self.vy) + ' ' + str(self.theta))
         self.rect.x = self.x/self.scale
         self.rect.y = self.y/self.scale
 
@@ -109,14 +109,14 @@ class csbpod():
         if dist < game.checkpointradius:
             running = not (self.checkpointindex == (game.n_checkpoints - 1))
             self.log('checkpoint collision----------------------------------------------')
-            self.log('target, coords, distance = ' + str(checkpoint) + str(coordinates) + str(dist))
+            self.log('target, coords, distance = ' + str(checkpoint) + ' ' +  str(coordinates) + ' ' + str(dist))
             self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))
             self.checkpointindex = game.checkpointindex + 1
             game.checkpointindex = self.checkpointindex
         return checkpoint[0], checkpoint[1], self.x, self.y, self.vx, self.vy, running
 
     def log(self, message):
-        self.logfile.writelines(message)
+        self.logfile.writelines(message + '\n')
 
 class game:
     # Global game parameters

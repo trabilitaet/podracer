@@ -65,8 +65,7 @@ while running:
 
 pygame.quit()
 time = datetime.datetime.utcnow()
-filename = 'score' + str(time) + control.getName()
+filename = 'score' + control.getName()
 logfile = open(filename, 'w')
-logfile.writelines('reached target in ' + str(tick) + ' ticks')
-logfile.writelines('')
+logfile.writelines('reached target in ' + str(tick) + ' ticks' + '\n')
 logfile.close()
