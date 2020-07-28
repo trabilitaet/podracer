@@ -3,9 +3,11 @@
 Codebase for semester thesis on controlling a hovercraft style simulated racing bot. See [coders strike back website](https://www.codingame.com/ide/puzzle/coders-strike-back)
 
 # how to use
-1. check out branch of controller to try (e.g. git checkout controller_A)
-2. run the demo from a commandline or an IDE: python csb.py
-3. look at commandline outputs, animation or logfiles for results
+1. ~~check out branch of controller to try (e.g. git checkout controller_A)~~
+1. check out master
+2. change controller call in csb.py to the controller under test 
+3. run the demo from a commandline or an IDE: python csb.py
+4. look at commandline outputs, animation or logfiles for results
 
 # contents
 ## Referee.java
