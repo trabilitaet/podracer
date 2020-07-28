@@ -2,7 +2,8 @@ import sys, pygame
 import pod
 import numpy as np
 import datetime
-import controller_A
+#import controller_A
+import controller_PID
 
 pygame.init()
 
@@ -18,7 +19,8 @@ background = pygame.image.load("img/back.png")
 background = pygame.transform.scale(background, (gameWidth, gameHeight))
 ####################################
 # initialize controller
-control = controller_A.controller_A()
+#control = controller_A.controller_A()
+control = controller_PID.PID()
 ####################################
 
 ####################################
