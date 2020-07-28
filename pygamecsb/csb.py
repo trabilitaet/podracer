@@ -36,19 +36,18 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
 
-    target_x, target_y, x, y, vx, vy, running = pod.getState(game, running)
     ################################
     # controller goes here here
     ################################
-
-    thrust, heading_x, heading_y = control.calculate(x,y, target_x, target_y)
+    # delta_angle is the angle between the current heading and the target
+    thrust, heading_x, heading_y = control.calculate(x,y, target_x, target_y, delta_angle)
     
     ################################
     # end controller here here
     ################################
 
     if not test:
-        trust = np.clip(0,100, thrust)
+        trust = np.clip(thrust, 0, 100)
 
     # move pod
     pod.move(heading_x, heading_y, thrust)

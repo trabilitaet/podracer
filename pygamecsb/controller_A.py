@@ -36,22 +36,26 @@ class controller_A:
 		return u, v
 
 	def get_heading(self, x, y, r_control):
-		r_control = np.clip(r_control, -max_ang_rotation, max_ang_rotation)
+		r_control = np.clip(-r_control, -max_ang_rotation, max_ang_rotation)
 		print(r_control)
 		x_heading = math.cos(r_control)
-		y_heading = - math.sin(r_control)
+		y_heading = math.sin(r_control)
 
 		return x_heading, y_heading
 
-	# idea of cascading control: calculate reference to track
-	def calculate(self, x, y, target_x, target_y):
+	def calculate(self, x, y, target_x, target_y, delta_angle):
 		# calculate velocities in x and y
 		vx = x - self.x_prev
 		vy = y - self.y_prev
 		self.x_prev = x
 		self.y_prev = y
 
-		phi = self.getAngle(x,y, target_x, target_y)
+		# phi: should be heading angle
+		checkpoint_angle = self.getAngle(x,y, target_x, target_y)
+		if checkpoint_angle <= np.pi/2:
+			phi = checkpoint_angle + delta_angle
+		else:
+			phi = checkpoint_angle - delta_angle
 		u, v = self.rotate(vx,vy, phi)
 
 		# calculate states
@@ -61,19 +65,21 @@ class controller_A:
 		# choose inputs u, r:
 		u_control = -z1+ math.sqrt(pow(v, 2)/4 + pow(z2,2)/4)
 		r_control = (4*v +2*z2)/math.sqrt(pow(v,2) + pow(z2,2))
+		print('r_control, u_control: ', r_control, u_control)
 
 
 		# apply control law (5) to get thrust (tau_u)
 		thrust = self.ku * u_control
-		print(thrust)
+		print('thrust: ', thrust)
 		# apply control law (6) to get desired angular accelleration (tau_r)
 		# tau_r = -u_control*r_control - kr*(r_control - u_control)
 
 		# convert desired angular accelleration to target heading
-		#x_heading, y_heading =  self.get_heading(x,y, r_control)
-		x_heading = target_x
-		y_heading = target_y
+		x_heading, y_heading =  self.get_heading(x,y, r_control)
+		# x_heading = target_x
+		# y_heading = target_y
 
+		print('heading x,y: ', x_heading, y_heading)
 		return thrust, x_heading, y_heading
 
 	def getName(self):

@@ -106,6 +106,8 @@ class csbpod():
         coordinates = np.array([self.x, self.y])
         checkpoint = game.checkpoints[self.checkpointindex]
         dist = distance.euclidean(coordinates, checkpoint)
+
+        # TODO: move the collision detection to appropriate place in code
         if dist < game.checkpointradius:
             running = not (self.checkpointindex == (game.n_checkpoints - 1))
             self.log('checkpoint collision----------------------------------------------')
@@ -113,7 +115,10 @@ class csbpod():
             self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))
             self.checkpointindex = game.checkpointindex + 1
             game.checkpointindex = self.checkpointindex
-        return checkpoint[0], checkpoint[1], self.x, self.y, self.vx, self.vy, running
+
+        # get angle between current heading theta and the next checkpoint
+        delta_angle = self.getDeltaAngle(np.array([checkpoint[0], checkpoint[1]]))
+        return checkpoint[0], checkpoint[1], self.x, self.y, self.vx, self.vy, delta_angle, running
 
     def log(self, message):
         self.logfile.writelines(message + '\n')
