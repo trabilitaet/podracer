@@ -4,32 +4,42 @@ from scipy.special import lambertw
 import ipopt
 
 class model():
-    def __init__(self, Np, x, y, next_checkpoint_4x, next_checkpoint_y):
+    def __init__(self, N_hat, Np, x0, r1, r2):
         self.Q = np.array([[1,0],[0,1]])
+        self.N_hat = N_hat
         self.Np = Np
         self.x = np.zeros((self.Np, 2))
-        self.x[0,:] = x,y # ?
+        self.x[0,:] = x0 # ?
+
+        self.r1 = r1
+        self.r2 = r2
+
+    def update(self):
+        # update values of x0, r1,r2, N_hat
 
     # for state vector x, return value of objective function
     def objective(self, x):
         J = 0
-        for 
-
+        for k in range(self.N_hat-1):
+            J += np.dot(np.dot(np.transpose(x[k,:]-self.r1), self.Q), (x[k,:]-self.r1))
+        for k in range(self.N_hat-1, self.Np):
+            J += np.dot(np.dot(np.transpose(x[k,:]-self.r2), self.Q), (x[k,:]-self.r2))
+        return J
 
     def constraints(self):
     def gradient(self):
     def jacobian(self):
 
 class NMPC():
-    def __init__(self,x, y, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle):
-        N_hat = self.min_steps(x, y, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle)
-
-        # set prediction horizon ?
-        self.Np = N_hat + 1 #??7
-
+    def __init__(self):
         # checkpoints
         self.checkpoints = np.load('checkpoints.npy')
         self.n_checkpoints = self.checkpoints.shape[0]
+
+        self.N_hat = self.min_steps(x, y, next_checkpoint_x, next_checkpoint_y)
+
+        # set prediction horizon ?
+        self.Np = self.N_hat + 1 #??
 
         # lower and upper bounds for a,w
         self.lb = [0,-math.pi/10]
@@ -39,7 +49,8 @@ class NMPC():
         # constraints on states for every time step
         self.n_constraints = 7*self.Np*2
 
-        #set constraints on states, rx,ry,vx,vy,psi including initial condition
+        self.problem_obj = model(self.N_hat, self.Np)
+
 
     def calculate(self, x, y, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle):
         # TODO: make sure there are no rounding issues
@@ -47,7 +58,7 @@ class NMPC():
         r1 = self.checkpoints[checkpointindex,:]
         r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints),:]
 
-
+        self.problem_obj.update()
 
         nlp = ipopt.problem(
             n=len(x1),
@@ -98,7 +109,7 @@ class NMPC():
         t3 = 17 / 3
         t3 += 3 * dist / 17
         t3 += lambertw(-1/3*pow(2,-34/3-6*dist/17) \
-            *pow(5,-17/3-3*dist/17)*pow(17,20/3+3*dist/17)*math.log(20/17))/math.log(20/17)
+                       *pow(5,-17/3-3*dist/17)*pow(17,20/3+3*dist/17)*math.log(20/17))/math.log(20/17)
         t3 = math.ceil(t3)
         print('t3: ', t3)
 
