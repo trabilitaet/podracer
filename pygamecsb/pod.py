@@ -153,7 +153,8 @@ class game:
                 if not tooclose:
                     checkpoints[index, :] = ckpt
                     break
-        np.savetxt('checkpoints', checkpoints)
+        np.savetxt('checkpoints.txt', checkpoints)
+        np.save('checkpoints', checkpoints)
         return checkpoints
 
     def CheckpointRect(self, checkpoint):
