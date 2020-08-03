@@ -12,9 +12,10 @@ class model():
         self.r1 = r1
         self.r2 = r2
 
-    def update(self, x0, r1, r2, N_hat):
+    def update(self, x0, v0, r1, r2, N_hat):
         # update values of x0, r1,r2, N_hat
         self.x0 = x0
+        self.v0 = v0
         self.r1 = r1
         self.r2 = r2
         self.N_hat = N_hat
@@ -28,27 +29,59 @@ class model():
         # The function should return the objective function value at the point x.
         J = 0
         for k in range(self.N_hat-1):
-            J += np.dot(np.dot(x[k,:]-self.r1, self.Q), np.transpose(x[k,:]-self.r1))
+            xk = np.array([x[3*k],x[3*k+1]])
+            J += np.dot(np.dot(xk-self.r1, self.Q), np.transpose(xk-self.r1))
         for k in range(self.N_hat-1, self.Np):
-            J += np.dot(np.dot(np.transpose(x[k,:]-self.r2), self.Q), (x[k,:]-self.r2))
+            xk = np.array([x[3*k],x[3*k+1]])
+            J += np.dot(np.dot(xk-self.r2, self.Q), np.transpose(xk-self.r2))
         return J
 
-    def constraints(self,x):
+    def constraints(self,x): #TODO: handle edges
         # Callback function for evaluating constraint functions. 
         # The callback functions accepts one parameter: 
         #    x (value of the optimization variables at which the constraints are to be evaluated). 
         # The function should return the constraints values at the point x.
         #x represents all 2*Np variables
         # return an np array of constraints
-        constraints = np.zeros((2,5*self.Np+2))
-        for k in range(self.Np)
-            constraints[]
+        n_inputs = 2
+        n_inits = 5
+        n_states = 3
+        constraints = np.zeros((1,n_inputs*self.Np+n_inits))
+        
+        #initial conditions
+        conditions[0] = x[0] #rx0
+        conditions[1] = x[1] #ry0
+        conditions[3] = x[2] #psi0
+        conditions[4] = x[2] - x[0] #v0x
+        conditions[5] = x[3] - x[1] #v0y
+
+        #set the constraints for states in t=[3,Np]
+        for k in range(self.Np-3)
+            # constraints on a -> affect r[t+2] and r[t+1]
+            constraints[n_inits+n_inputs*k] = (17/20*x[n_states*k+6]-3/17*x[n_states*k+3]-x[n_states*k])/math.cos(x[n_states*k+2])
+            # constraints on w 
+            constraints[n_inits+n_inputs*k+1] = x[n_states*k+5] - x[n_states*k+2]
+        #constraint on the last w
+        constraints[n_inputs*(self.Np-2)] = x[n_states*(self.Np-2)+5] - x[3*(self.Np-2)+2]
+
+        return constraints
+
 
     def gradient(self,x):
         #Callback function for evaluating gradient of objective function.
         #The callback functions accepts one parameter: 
         #   x (value of the optimization variables at which the gradient is to be evaluated). 
         #The function should return the gradient of the objective function at the point x.
+        grad = np.zeros((3*Np,1))
+        for k in range(Np):
+            # x-coord
+            grad[3*k] = 2*(x[3*k]-self.r1[0])
+            # y-coord
+            grad[3*k+1] = 2*(x[3*k+1]-self.r1[1])
+            # angle
+            grad[3*k+2] = 0
+
+        return grad
 
     def jacobian(self,x):
         # Callback function for evaluating Jacobian of constraint functions.
@@ -57,6 +90,9 @@ class model():
         # The function should return the values of the jacobian as calculated using x. 
         # The values should be returned as a 1-dim numpy array 
         #(using the same order as you used when specifying the sparsity structure)
+
+        return jacobian
+
 
     def intermediate(self,x):
         # Optional. 
