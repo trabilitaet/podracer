@@ -8,27 +8,62 @@ class model():
         self.Q = np.array([[1,0],[0,1]])
         self.N_hat = N_hat
         self.Np = Np
-        self.x = np.zeros((self.Np, 2))
-        self.x[0,:] = x0 # ?
 
         self.r1 = r1
         self.r2 = r2
 
-    def update(self):
+    def update(self, x0, r1, r2, N_hat):
         # update values of x0, r1,r2, N_hat
+        self.x0 = x0
+        self.r1 = r1
+        self.r2 = r2
+        self.N_hat = N_hat
+
 
     # for state vector x, return value of objective function
     def objective(self, x):
+        # Callback function for evaluating objective function. 
+        # The callback functions accepts one parameter: 
+        #     x (value of the optimization variables at which the objective is to be evaluated).
+        # The function should return the objective function value at the point x.
         J = 0
         for k in range(self.N_hat-1):
-            J += np.dot(np.dot(np.transpose(x[k,:]-self.r1), self.Q), (x[k,:]-self.r1))
+            J += np.dot(np.dot(x[k,:]-self.r1, self.Q), np.transpose(x[k,:]-self.r1))
         for k in range(self.N_hat-1, self.Np):
             J += np.dot(np.dot(np.transpose(x[k,:]-self.r2), self.Q), (x[k,:]-self.r2))
         return J
 
-    def constraints(self):
-    def gradient(self):
-    def jacobian(self):
+    def constraints(self,x):
+        # Callback function for evaluating constraint functions. 
+        # The callback functions accepts one parameter: 
+        #    x (value of the optimization variables at which the constraints are to be evaluated). 
+        # The function should return the constraints values at the point x.
+        #x represents all 2*Np variables
+        # return an np array of constraints
+        constraints = np.zeros((2,5*self.Np+2))
+        for k in range(self.Np)
+            constraints[]
+
+    def gradient(self,x):
+        #Callback function for evaluating gradient of objective function.
+        #The callback functions accepts one parameter: 
+        #   x (value of the optimization variables at which the gradient is to be evaluated). 
+        #The function should return the gradient of the objective function at the point x.
+
+    def jacobian(self,x):
+        # Callback function for evaluating Jacobian of constraint functions.
+        # The callback functions accepts one parameter:
+        #    x (value of the optimization variables at which the jacobian is to be evaluated).
+        # The function should return the values of the jacobian as calculated using x. 
+        # The values should be returned as a 1-dim numpy array 
+        #(using the same order as you used when specifying the sparsity structure)
+
+    def intermediate(self,x):
+        # Optional. 
+        # Callback function that is called once per iteration (during the convergence check),
+        # and can be used to obtain information about the optimization status while IPOPT solves the problem.
+        # If this callback returns False, IPOPT will terminate with the User_Requested_Stop status.
+        # The information below corresponeds to the argument list passed to this callback:
 
 class NMPC():
     def __init__(self):
@@ -36,7 +71,7 @@ class NMPC():
         self.checkpoints = np.load('checkpoints.npy')
         self.n_checkpoints = self.checkpoints.shape[0]
 
-        self.N_hat = self.min_steps(x, y, next_checkpoint_x, next_checkpoint_y)
+        self.N_hat = self.min_steps(self.checkpoints[0,0], self.checkpoints[0,1], self.checkpoints[1,0], self.checkpoints[1,1])
 
         # set prediction horizon ?
         self.Np = self.N_hat + 1 #??
@@ -48,22 +83,24 @@ class NMPC():
         self.n_var = 2
         # constraints on states for every time step
         self.n_constraints = 7*self.Np*2
+        self.model = model(self.N_hat, self.Np)
+        self.old_checkpoint = np.zeros((2,1))
 
-        self.problem_obj = model(self.N_hat, self.Np)
-
-
-    def calculate(self, x, y, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle):
+    # calculate is called in every step
+    def calculate(self, rx, ry, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle):
+        x = np.array([rx,ry])
         # TODO: make sure there are no rounding issues
         checkpointindex = self.get_checkpoint_index(next_checkpoint_x, next_checkpoint_y)
         r1 = self.checkpoints[checkpointindex,:]
         r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints),:]
 
-        self.problem_obj.update()
+        self.N_hat = max(1, self.N_hat -1)
+        self.model.update(x, r1, r2, self.N_hat)
 
         nlp = ipopt.problem(
             n=len(x1),
             m=len(cl),
-            problem_obj=,
+            problem_obj=self.model,
             lb=self.lb,
             ub=self.ub,
             cl=self.cl,
@@ -71,11 +108,12 @@ class NMPC():
         )
 
 
+        # how to detect next checkpoint
 
-
-
+        self.old_checkpoint = r1
 
         return thrust, next_checkpoint_x, next_checkpoint_y
+
 
     def get_checkpoint_index(self, checkpoint_x, checkpoint_y):
         for index in range(self.n_checkpoints):

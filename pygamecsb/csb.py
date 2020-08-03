@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 #import controller_A
 import controller_PID
+import controller_NMPC
 
 pygame.init()
 
@@ -20,7 +21,7 @@ background = pygame.transform.scale(background, (gameWidth, gameHeight))
 ####################################
 # initialize controller
 #control = controller_A.controller_A()
-control = controller_PID.PID()
+control = controller_NMPC.NMPC()
 ####################################
 
 ####################################
