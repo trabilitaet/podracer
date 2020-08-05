@@ -87,42 +87,70 @@ class model():
         # The values should be returned as a 1-dim numpy array 
         # (using the same order as you used when specifying the sparsity structure)
         # 7 vars -> 7Np derivatives for every constraint 
-        jacobian = np.zeros((7*self.n_constraints,1)) #input,variable, init
-
-        # input constraints
-        tmp = np.zeros((self.Np,7))
-        for k in range(self.Np):
+        Np = self.Np
+        n_constraints = self.n_constraints
+        jacobian = np.zeros((2*7*Np+4*7*(Np-1)+5*7*Np,1)) #input,variable, init
+        offset = 0
+        # input constraints: one matrix per time step
+        tmp = np.zeros((Np,7))
+        for k in range(Np):
             tmp[k,5] = 1 #a
-        jacobian[0:self.Np*7] = tmp.flatten()
+        jacobian[0:Np*7] = tmp.flatten().reshape((7*Np,1))
+        offset += Np*7
 
-        tmp = np.zeros((self.Np,7))
-        for k in range(self.Np):
+        tmp = np.zeros((Np,7))
+        for k in range(Np):
             tmp[k,6] = 1 #w
-        jacobian[self.Np*7:self.Np*14] = tmp.flatten()
+        jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
+        offset += Np*7
 
-        #velocity constraints
-        tmp = np.zeros((self.Np,7))
-        tmp[0,0] = -1 #w
-        tmp[0,2] = -1 #w
-        jacobian[self.Np*14:self.Np*14] = tmp.flatten()
+        #velocity constraints: one matrix per time step per constraint
+        for k in range(Np-1):
+            tmp = np.zeros((Np,7))
+            tmp[k,0] = -1 #-rx[t]
+            tmp[k,2] = -1 #-vx[t]
+            tmp[k+1,0] =  1 #rx[t+1]
+            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
+            offset += Np*7
 
-
-
+        for k in range(Np-1):
+            tmp = np.zeros((Np,7))
+            tmp[k,1] = -1 #-ry[t]
+            tmp[k,3] = -1 #-vy[t]
+            tmp[k+1,1] =  1 #ry[t+1]
+            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
+            offset += Np*7
 
         #accelleration constraints
-        # for k in range(self.Np-1):
-        #     constraints[2*self.Np+k] = x[k+1,3]-0.85*x[k,3]-0.85*x[k,5]*math.cos(x[k,2])
-        #     constraints[3*self.Np+k] = x[k+1,4]-0.85*x[k,4]-0.85*x[k,5]*math.sin(x[k,2])
-        #     constraints[4*self.Np+k] = x[k+1,2]-x[k,2]-x[k,6]
-        
+        for k in range(Np-1):
+            tmp = np.zeros((Np,7))
+            tmp[k,2] = 0.85*x[k,5]*math.sin(x[k,2]) #psi[t]
+            tmp[k,3] = -0.85 #vx[t]
+            tmp[k,5] = -0.85*math.cos(x[k,2]) #a[t]
+            tmp[k+1,3] = 1 #vx[t+1]
+            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
+            offset += Np*7
+
+        for k in range(Np-1):#check equations
+            tmp = np.zeros((Np,7))
+            tmp[k,2] = -0.85*x[k,5]*math.cos(x[k,2]) #psi[t]
+            tmp[k,4] = -0.85 #vy[t]
+            tmp[k,5] = 0.85*math.sin(x[k,2]) #a[t]
+            tmp[k+1,4] = 1 #vy[t+1]
+            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
+            offset += Np*7
+
         #initial conditions
-        # for k in range(5):
-        #     constraints[5*Np+k] = x[0,k]
+        # 5 constraints -> 5*7*Np derivatives
+        for i in range(5):
+            tmp = np.zeros((Np,7))
+            tmp[0,i] = 1
+            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
+            offset += Np*7
 
-
-       
-
-
+        heatmap = jacobian.reshape((int(np.shape(jacobian)[0]/7),7))
+        plt.imshow(heatmap)
+        plt.show()
 
 
         return J
