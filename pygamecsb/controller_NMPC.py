@@ -9,6 +9,9 @@ class model():
         self.N_hat = N_hat
         self.Np = Np
 
+        self.n_vars = 7 #rx,ry,psi,vx,vy,a,w
+        self.n_constraints = 7*(self.Np-1)+5 #vars + inits
+
         self.r1 = r1
         self.r2 = r2
 
@@ -20,7 +23,6 @@ class model():
         self.r2 = r2
         self.N_hat = N_hat
 
-
     # for state vector x, return value of objective function
     def objective(self, x):
         # Callback function for evaluating objective function. 
@@ -29,40 +31,36 @@ class model():
         # The function should return the objective function value at the point x.
         J = 0
         for k in range(self.N_hat-1):
-            xk = np.array([x[3*k],x[3*k+1]])
-            J += np.dot(np.dot(xk-self.r1, self.Q), np.transpose(xk-self.r1))
+            rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
+            J += np.dot(np.dot(xk-self.r1, self.Q), np.transpose(xk-self.r1)) # dist to next target
         for k in range(self.N_hat-1, self.Np):
-            xk = np.array([x[3*k],x[3*k+1]])
-            J += np.dot(np.dot(xk-self.r2, self.Q), np.transpose(xk-self.r2))
+            rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
+            J += np.dot(np.dot(xk-self.r2, self.Q), np.transpose(xk-self.r2)) # dist to next target
         return J
 
-    def constraints(self,x): #TODO: handle edges
+    def constraints(self,x):
         # Callback function for evaluating constraint functions. 
         # The callback functions accepts one parameter: 
         #    x (value of the optimization variables at which the constraints are to be evaluated). 
         # The function should return the constraints values at the point x.
-        #x represents all 2*Np variables
-        # return an np array of constraints
-        n_inputs = 2
-        n_inits = 5
-        n_states = 3
-        constraints = np.zeros((1,n_inputs*self.Np+n_inits))
-        
+        constraints = np.zeros((self.n_constraints))
+        # for every type of constraint, add one for every timestep
+        for k in range(self.Np-1):
+            #input constraints
+            constraints[k] = x[k,5] #a
+            constraints[k+1*self.Np-1] = x[k,6] #w
+            #velocity constraints
+            constraints[k+2*(self.Np-1)] = x[k+1,0] - x[k,0] - x[k,3] #x
+            constraints[k+3*(self.Np-1)] = x[k+1,1] - x[k,1] - x[k,4] #y
+            #accelleration constraints
+            constraints[k+4*(self.Np-1)] = x[k+1,3]-0.85*x[k,3]-0.85*x[k,5]*math.cos(x[k,2]) #vx
+            constraints[k+5*(self.Np-1)] = x[k+1,4]-0.85*x[k,4]-0.85*x[k,5]*math.sin(x[k,2]) #vy
+            #angle constraints
+            constraints[k+6*(self.Np-1)] = x[k+1,2]-x[k,2]-x[k,6] #psi
         #initial conditions
-        conditions[0] = x[0] #rx0
-        conditions[1] = x[1] #ry0
-        conditions[3] = x[2] #psi0
-        conditions[4] = x[2] - x[0] #v0x
-        conditions[5] = x[3] - x[1] #v0y
-
-        #set the constraints for states in t=[3,Np]
-        for k in range(self.Np-3)
-            # constraints on a -> affect r[t+2] and r[t+1]
-            constraints[n_inits+n_inputs*k] = (17/20*x[n_states*k+6]-3/17*x[n_states*k+3]-x[n_states*k])/math.cos(x[n_states*k+2])
-            # constraints on w 
-            constraints[n_inits+n_inputs*k+1] = x[n_states*k+5] - x[n_states*k+2]
-        #constraint on the last w
-        constraints[n_inputs*(self.Np-2)] = x[n_states*(self.Np-2)+5] - x[3*(self.Np-2)+2]
+        
+        #goal reaching constraints
+        #TODO
 
         return constraints
 
@@ -71,16 +69,14 @@ class model():
         #Callback function for evaluating gradient of objective function.
         #The callback functions accepts one parameter: 
         #   x (value of the optimization variables at which the gradient is to be evaluated). 
-        #The function should return the gradient of the objective function at the point x.
-        grad = np.zeros((3*Np,1))
+        # The function should return the gradient of the objective function at the point x.
+        grad = np.zeros((self.Np,self.n_var))
+        # only components for x,y are nonzero
         for k in range(Np):
-            # x-coord
-            grad[3*k] = 2*(x[3*k]-self.r1[0])
-            # y-coord
-            grad[3*k+1] = 2*(x[3*k+1]-self.r1[1])
-            # angle
-            grad[3*k+2] = 0
-
+            #x-coord
+            grad[k,0] =  2*(x[k,0]-self.r1[0])
+            #y-coord
+            grad[k,1] =  2*(x[k,1]-self.r1[1])
         return grad
 
     def jacobian(self,x):
@@ -89,9 +85,47 @@ class model():
         #    x (value of the optimization variables at which the jacobian is to be evaluated).
         # The function should return the values of the jacobian as calculated using x. 
         # The values should be returned as a 1-dim numpy array 
-        #(using the same order as you used when specifying the sparsity structure)
+        # (using the same order as you used when specifying the sparsity structure)
+        # 7 vars -> 7Np derivatives for every constraint 
+        jacobian = np.zeros((7*self.n_constraints,1)) #input,variable, init
 
-        return jacobian
+        # input constraints
+        tmp = np.zeros((self.Np,7))
+        for k in range(self.Np):
+            tmp[k,5] = 1 #a
+        jacobian[0:self.Np*7] = tmp.flatten()
+
+        tmp = np.zeros((self.Np,7))
+        for k in range(self.Np):
+            tmp[k,6] = 1 #w
+        jacobian[self.Np*7:self.Np*14] = tmp.flatten()
+
+        #velocity constraints
+        tmp = np.zeros((self.Np,7))
+        tmp[0,0] = -1 #w
+        tmp[0,2] = -1 #w
+        jacobian[self.Np*14:self.Np*14] = tmp.flatten()
+
+
+
+
+        #accelleration constraints
+        # for k in range(self.Np-1):
+        #     constraints[2*self.Np+k] = x[k+1,3]-0.85*x[k,3]-0.85*x[k,5]*math.cos(x[k,2])
+        #     constraints[3*self.Np+k] = x[k+1,4]-0.85*x[k,4]-0.85*x[k,5]*math.sin(x[k,2])
+        #     constraints[4*self.Np+k] = x[k+1,2]-x[k,2]-x[k,6]
+        
+        #initial conditions
+        # for k in range(5):
+        #     constraints[5*Np+k] = x[0,k]
+
+
+       
+
+
+
+
+        return J
 
 
     def intermediate(self,x):
