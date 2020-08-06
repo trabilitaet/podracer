@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from scipy.special import lambertw
-import ipopt
+import ipyopt
 
 class model():
     def __init__(self, N_hat, Np, x0, r1, r2):
@@ -162,6 +162,7 @@ class model():
         # and can be used to obtain information about the optimization status while IPOPT solves the problem.
         # If this callback returns False, IPOPT will terminate with the User_Requested_Stop status.
         # The information below corresponeds to the argument list passed to this callback:
+        return 0
 
 class NMPC():
     def __init__(self):
@@ -169,7 +170,8 @@ class NMPC():
         self.checkpoints = np.load('checkpoints.npy')
         self.n_checkpoints = self.checkpoints.shape[0]
 
-        self.N_hat = self.min_steps(self.checkpoints[0,0], self.checkpoints[0,1], self.checkpoints[1,0], self.checkpoints[1,1])
+        self.N_hat = self.min_steps(np.array([self.checkpoints[0,0], self.checkpoints[0,1]]),\
+                        np.array([0,0]), 0, np.array([self.checkpoints[1,0], self.checkpoints[1,1]]))
 
         # set prediction horizon ?
         self.Np = self.N_hat + 1 #??
@@ -222,7 +224,10 @@ class NMPC():
     def min_steps(self,x0, v0, phi0, r1):
 
         #velocity decay time
-        t1 = math.ceil(math.log(np.linalg.norm(v0)) / math.log(20 / 17))
+        if np.linalg.norm(v0):
+            t1 = math.ceil(math.log(np.linalg.norm(v0)) / math.log(20 / 17))
+        else:
+            t1 = 0
 
         # position as velocity reaches 0
         x1 = x0
@@ -244,8 +249,6 @@ class NMPC():
         # calculate travel time from x1 to r1 at max acelleration (formula from mathematica)
         t3 = 17 / 3
         t3 += 3 * dist / 17
-        t3 += lambertw(-1/3*pow(2,-34/3-6*dist/17) \
-                       *pow(5,-17/3-3*dist/17)*pow(17,20/3+3*dist/17)*math.log(20/17))/math.log(20/17)
         t3 = math.ceil(t3)
         print('t3: ', t3)
 
