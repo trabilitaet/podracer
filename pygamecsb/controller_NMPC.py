@@ -1,205 +1,64 @@
 import numpy as np
 import math
-from scipy.special import lambertw
-import ipyopt
-
-class model():
-    def __init__(self, N_hat, Np, x0, r1, r2):
-        self.Q = np.array([[1,0],[0,1]])
-        self.N_hat = N_hat
-        self.Np = Np
-
-        self.n_vars = 7 #rx,ry,psi,vx,vy,a,w
-        self.n_constraints = 7*(self.Np-1)+5 #vars + inits
-
-        self.r1 = r1
-        self.r2 = r2
-
-    def update(self, x0, v0, r1, r2, N_hat):
-        # update values of x0, r1,r2, N_hat
-        self.x0 = x0
-        self.v0 = v0
-        self.r1 = r1
-        self.r2 = r2
-        self.N_hat = N_hat
-
-    # for state vector x, return value of objective function
-    def objective(self, x):
-        # Callback function for evaluating objective function. 
-        # The callback functions accepts one parameter: 
-        #     x (value of the optimization variables at which the objective is to be evaluated).
-        # The function should return the objective function value at the point x.
-        J = 0
-        for k in range(self.N_hat-1):
-            rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
-            J += np.dot(np.dot(xk-self.r1, self.Q), np.transpose(xk-self.r1)) # dist to next target
-        for k in range(self.N_hat-1, self.Np):
-            rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
-            J += np.dot(np.dot(xk-self.r2, self.Q), np.transpose(xk-self.r2)) # dist to next target
-        return J
-
-    def constraints(self,x):
-        # Callback function for evaluating constraint functions. 
-        # The callback functions accepts one parameter: 
-        #    x (value of the optimization variables at which the constraints are to be evaluated). 
-        # The function should return the constraints values at the point x.
-        constraints = np.zeros((self.n_constraints))
-        # for every type of constraint, add one for every timestep
-        for k in range(self.Np-1):
-            #input constraints
-            constraints[k] = x[k,5] #a
-            constraints[k+1*self.Np-1] = x[k,6] #w
-            #velocity constraints
-            constraints[k+2*(self.Np-1)] = x[k+1,0] - x[k,0] - x[k,3] #x
-            constraints[k+3*(self.Np-1)] = x[k+1,1] - x[k,1] - x[k,4] #y
-            #accelleration constraints
-            constraints[k+4*(self.Np-1)] = x[k+1,3]-0.85*x[k,3]-0.85*x[k,5]*math.cos(x[k,2]) #vx
-            constraints[k+5*(self.Np-1)] = x[k+1,4]-0.85*x[k,4]-0.85*x[k,5]*math.sin(x[k,2]) #vy
-            #angle constraints
-            constraints[k+6*(self.Np-1)] = x[k+1,2]-x[k,2]-x[k,6] #psi
-        #initial conditions
-        
-        #goal reaching constraints
-        #TODO
-
-        return constraints
-
-
-    def gradient(self,x):
-        #Callback function for evaluating gradient of objective function.
-        #The callback functions accepts one parameter: 
-        #   x (value of the optimization variables at which the gradient is to be evaluated). 
-        # The function should return the gradient of the objective function at the point x.
-        grad = np.zeros((self.Np,self.n_var))
-        # only components for x,y are nonzero
-        for k in range(Np):
-            #x-coord
-            grad[k,0] =  2*(x[k,0]-self.r1[0])
-            #y-coord
-            grad[k,1] =  2*(x[k,1]-self.r1[1])
-        return grad
-
-    def jacobian(self,x):
-        # Callback function for evaluating Jacobian of constraint functions.
-        # The callback functions accepts one parameter:
-        #    x (value of the optimization variables at which the jacobian is to be evaluated).
-        # The function should return the values of the jacobian as calculated using x. 
-        # The values should be returned as a 1-dim numpy array 
-        # (using the same order as you used when specifying the sparsity structure)
-        # 7 vars -> 7Np derivatives for every constraint 
-        Np = self.Np
-        n_constraints = self.n_constraints
-        jacobian = np.zeros((2*7*Np+4*7*(Np-1)+5*7*Np,1)) #input,variable, init
-        offset = 0
-        # input constraints: one matrix per time step
-        tmp = np.zeros((Np,7))
-        for k in range(Np):
-            tmp[k,5] = 1 #a
-        jacobian[0:Np*7] = tmp.flatten().reshape((7*Np,1))
-        offset += Np*7
-
-        tmp = np.zeros((Np,7))
-        for k in range(Np):
-            tmp[k,6] = 1 #w
-        jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
-        offset += Np*7
-
-        #velocity constraints: one matrix per time step per constraint
-        for k in range(Np-1):
-            tmp = np.zeros((Np,7))
-            tmp[k,0] = -1 #-rx[t]
-            tmp[k,2] = -1 #-vx[t]
-            tmp[k+1,0] =  1 #rx[t+1]
-            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
-            offset += Np*7
-
-        for k in range(Np-1):
-            tmp = np.zeros((Np,7))
-            tmp[k,1] = -1 #-ry[t]
-            tmp[k,3] = -1 #-vy[t]
-            tmp[k+1,1] =  1 #ry[t+1]
-            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
-            offset += Np*7
-
-        #accelleration constraints
-        for k in range(Np-1):
-            tmp = np.zeros((Np,7))
-            tmp[k,2] = 0.85*x[k,5]*math.sin(x[k,2]) #psi[t]
-            tmp[k,3] = -0.85 #vx[t]
-            tmp[k,5] = -0.85*math.cos(x[k,2]) #a[t]
-            tmp[k+1,3] = 1 #vx[t+1]
-            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
-            offset += Np*7
-
-        for k in range(Np-1):#check equations
-            tmp = np.zeros((Np,7))
-            tmp[k,2] = -0.85*x[k,5]*math.cos(x[k,2]) #psi[t]
-            tmp[k,4] = -0.85 #vy[t]
-            tmp[k,5] = 0.85*math.sin(x[k,2]) #a[t]
-            tmp[k+1,4] = 1 #vy[t+1]
-            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
-            offset += Np*7
-
-        #initial conditions
-        # 5 constraints -> 5*7*Np derivatives
-        for i in range(5):
-            tmp = np.zeros((Np,7))
-            tmp[0,i] = 1
-            jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
-            offset += Np*7
-
-        heatmap = jacobian.reshape((int(np.shape(jacobian)[0]/7),7))
-        plt.imshow(heatmap)
-        plt.show()
-
-
-        return J
-
-
-    def intermediate(self,x):
-        # Optional. 
-        # Callback function that is called once per iteration (during the convergence check),
-        # and can be used to obtain information about the optimization status while IPOPT solves the problem.
-        # If this callback returns False, IPOPT will terminate with the User_Requested_Stop status.
-        # The information below corresponeds to the argument list passed to this callback:
-        return 0
+import ipopt
+import nmpc_model
 
 class NMPC():
-    def __init__(self):
-        # checkpoints
-        self.checkpoints = np.load('checkpoints.npy')
-        self.n_checkpoints = self.checkpoints.shape[0]
+    ########################################################################
+    # INIT for NMPC controller
+    # called once before the start of the game
+    # given current game state, output desired thrust and heading
+    ########################################################################
+    def __init__(self, test, x0, y0, delta_angle_0):
+        self.old_x = x0
+        self.old_y = y0
 
-        self.N_hat = self.min_steps(np.array([self.checkpoints[0,0], self.checkpoints[0,1]]),\
-                        np.array([0,0]), 0, np.array([self.checkpoints[1,0], self.checkpoints[1,1]]))
+        self.test = test
+        if self.test:
+            # checkpoints
+            self.checkpoints = np.load('checkpoints.npy')
+            self.n_checkpoints = self.checkpoints.shape[0]
 
-        # set prediction horizon ?
-        self.Np = self.N_hat + 1 #??
+            self.N_hat = self.min_steps(np.array([self.checkpoints[0,0], self.checkpoints[0,1]]),\
+                            np.array([0,0]), 0, np.array([self.checkpoints[1,0], self.checkpoints[1,1]]))
+            self.Np = self.N_hat + 1 #prediction horizon
+        #else: TODO: add collision detection, lap detaction, tracking of past checkpoints
+        
+        self.n_constraints = 7*(self.Np-1)+5
+        self.model = nmpc_model.nmpc_model()
 
-        # lower and upper bounds for a,w
-        self.lb = [0,-math.pi/10]
-        self.ub = [math.pi/10, 100]
+        #IPOPT parameters
+        phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
+        self.lb, self.ub, self.cl, self.cu = self.set_limits(x0,y0,phi0)
+        
 
-        self.n_var = 2
-        # constraints on states for every time step
-        self.n_constraints = 7*self.Np*2
-        self.model = model(self.N_hat, self.Np)
-        self.old_checkpoint = np.zeros((2,1))
-
-    # calculate is called in every step
-    def calculate(self, rx, ry, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle):
+    ########################################################################
+    # MAIN interface to csb.py
+    # called in every time step
+    # given current game state, output desired thrust and heading
+    ########################################################################
+    def calculate(self, rx, ry, r1x, r1y, delta_angle):
         x = np.array([rx,ry])
         # TODO: make sure there are no rounding issues
-        checkpointindex = self.get_checkpoint_index(next_checkpoint_x, next_checkpoint_y)
-        r1 = self.checkpoints[checkpointindex,:]
-        r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints),:]
+        if self.test:
+            checkpointindex = self.get_checkpoint_index(r1x, r1y)
+            r1 = self.checkpoints[checkpointindex,:]
+            r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints),:]
+        else:
+            r1 = r2 = np.array([r1x,r1y])
 
-        self.N_hat = max(1, self.N_hat -1)
-        self.model.update(x, r1, r2, self.N_hat)
+        v = np.array([rx - self.old_x, ry - self.old_y])
+        self.old_x = rx
+        self.old_y = ry
+
+        self.N_hat = max(1, self.N_hat-1) #TODO
+        self.model.update(x, v, r1, r2, self.N_hat)
+
+        x0 = np.ones((self.Np,7))
 
         nlp = ipopt.problem(
-            n=len(x1),
-            m=len(cl),
+            n=7*self.Np,
+            m=len(self.cl),
             problem_obj=self.model,
             lb=self.lb,
             ub=self.ub,
@@ -207,14 +66,18 @@ class NMPC():
             cu=self.cu
         )
 
-
-        # how to detect next checkpoint
-
-        self.old_checkpoint = r1
+        #SOLVE nlp
+        x, info = nlp.solve(x0)
+        print(info)
+        plt.imshow(x)
+        plt.show()
 
         return thrust, next_checkpoint_x, next_checkpoint_y
 
 
+    ########################################################################
+    # UTILITY functions
+    ########################################################################
     def get_checkpoint_index(self, checkpoint_x, checkpoint_y):
         for index in range(self.n_checkpoints):
             if self.checkpoints[index,0] == checkpoint_x and self.checkpoints[index,1] == checkpoint_y:
@@ -222,37 +85,66 @@ class NMPC():
         return -1
 
     def min_steps(self,x0, v0, phi0, r1):
-
-        #velocity decay time
+        #velocity "decay" time
         if np.linalg.norm(v0):
-            t1 = math.ceil(math.log(np.linalg.norm(v0)) / math.log(20 / 17))
+            t_stop = math.ceil(math.log(np.linalg.norm(v0)) / math.log(20 / 17))
         else:
-            t1 = 0
+            t_stop = 0
+        #print('t_stop: ', t_stop)
 
         # position as velocity reaches 0
         x1 = x0
-        for i in range(t1):
+        for i in range(t_stop):
             x1 = x1 + pow(17/20,i)*v0
 
-        # distance vector
-        d = r1 - x1
+        d = r1 - x1 # distance vector
         dist = np.linalg.norm(d)
 
-        # calculate rotation time
-        # move at max. +/- Pi/10 per tick
-        # alpha: angle to target after velocity decay
-        angle = math.acos((d[0]) / dist)
-        print('angle: ', angle)
-        t2 = math.ceil(10 * angle / math.pi)
-        print('t2: ', t2)
+        angle = math.acos((d[0]) / dist) #angle to target
+        #print('angle: ', angle)
+        t_rot = math.ceil(10 * angle / math.pi) #rotation time at max. +/- pi/10 per tick
+        #print('t_rot: ', t_rot)
 
         # calculate travel time from x1 to r1 at max acelleration (formula from mathematica)
-        t3 = 17 / 3
-        t3 += 3 * dist / 17
-        t3 = math.ceil(t3)
-        print('t3: ', t3)
+        t_travel = math.ceil(17 / 3 + 3 * dist / 172)
+        #print('t_travel: ', t_travel)
 
-        return max(t1,t2) + t3
+        return max(t_stop, t_rot) + t_travel
 
-    def getName(self):
+    def set_limits(self, x0, y0, phi0):
+
+        x_min = -1000 #all checkpoints in [0,16000]
+        x_max = 20000 #all checkpoints in [0,16000]
+        y_min = -1000 #all checkpoints in [0,9000]
+        y_max = 10000 #all checkpoints in [0,9000]
+        phi_lim = 2*math.pi
+        v_lim = 15 #actual max velocity is 5.666 in x and y
+        #a_min = -100 if self.test else 0
+        a_min = 0
+        a_max = 100
+        w_lim = math.pi/10
+
+
+        #upper and lower bounds on variables
+        #rx,ry,phi,vx,vy,a,w
+        lb = [x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim]
+        ub = [x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim]
+
+        #upper and lower bounds on constraint functions
+        cl = np.zeros((self.n_constraints))
+        cu = np.zeros((self.n_constraints))
+        for k in range(self.Np-1):
+            cl[k] = a_min #TODO: these constraints are possibly redundant
+            cu[k] = a_max
+            cl[k + 1*(self.Np-1)] = -w_lim
+            cu[k + 1*(self.Np-1)] = w_lim
+
+        #values for cu, cl for x,y,vx,vy,psi constraints are already zero
+        cl[7*(self.Np-1)] = cu[7*(self.Np-1)] = x0
+        cl[7*(self.Np-1)+1] = cu[7*(self.Np-1)+1] = y0
+        cl[7*(self.Np-1)+2] = cu[7*(self.Np-1)+2] = phi0
+        #values for v0 constraints are already zero
+        return lb, ub, cl, cu
+
+    def get_name(self):
         return 'NMPC'
