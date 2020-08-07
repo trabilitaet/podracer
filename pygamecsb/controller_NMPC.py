@@ -43,7 +43,6 @@ class NMPC():
     # given current game state, output desired thrust and heading
     ########################################################################
     def calculate(self, rx, ry, r1x, r1y, delta_angle):
-        x = np.array([rx,ry])
         # TODO: make sure there are no rounding issues
         if self.test:
             checkpointindex = self.get_checkpoint_index(r1x, r1y)
@@ -57,9 +56,9 @@ class NMPC():
         self.old_y = ry
 
         self.N_hat = max(1, self.N_hat-1) #TODO
-        self.model.update(x, v, r1, r2, self.N_hat)
+        self.model.update(np.array([rx,ry]), v, r1, r2, self.N_hat)
 
-        x0 = np.ones((self.Np*7,1))
+        x0 = 10*np.ones((self.Np*7,1))
 
         nlp = ipopt.problem(
             n=7*self.Np,

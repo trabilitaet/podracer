@@ -20,7 +20,7 @@ pygame.init()
 # set GAME PARAMETERS here
 ########################################################################
 scale = 10
-gameSize = gameWidth, gameHeight = 1600, 900
+gameSize = gameWidth, gameHeight = 160, 90
 n_checkpoints = 6
 np.random.seed(1681)
 
