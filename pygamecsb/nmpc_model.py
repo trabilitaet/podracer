@@ -1,12 +1,13 @@
 import numpy as np
 import math
 import ipopt
+from matplotlib import pyplot as plt
 
 class nmpc_model():
-    def __init__(self):
+    def __init__(self, Np):
         self.Q = np.array([[1,0],[0,1]])
-        self.N_hat = 1000 #set to large value initially
-        self.Np = self.N_hat + 1
+        self.Np = Np
+        self.N_hat = Np-1 #set to large value initially
 
         self.n_vars = 7 #rx,ry,psi,vx,vy,a,w
         self.n_constraints = 7*(self.Np-1)+5 #vars + inits
@@ -14,16 +15,16 @@ class nmpc_model():
         self.r1 = np.array([0,0])
         self.r2 = np.array([0,0])
 
-#    def __init__(self, N_hat, Np, x0, r1, r2):
-#        self.Q = np.array([[1,0],[0,1]])
- #       self.N_hat = N_hat
-  #      self.Np = Np
-#
- #       self.n_vars = 7 #rx,ry,psi,vx,vy,a,w
-  #      self.n_constraints = 7*(self.Np-1)+5 #vars + inits
-#
- #       self.r1 = r1
-  #      self.r2 = r2
+   # def __init__(self, N_hat, Np, x0, r1, r2):
+   #     self.Q = np.array([[1,0],[0,1]])
+   #     self.N_hat = N_hat
+   #     self.Np = Np
+
+   #     self.n_vars = 7 #rx,ry,psi,vx,vy,a,w
+   #     self.n_constraints = 7*(self.Np-1)+5 #vars + inits
+
+   #     self.r1 = r1
+   #     self.r2 = r2
 
     def update(self, x0, v0, r1, r2, N_hat):
         # update values of x0, r1,r2, N_hat
@@ -39,13 +40,14 @@ class nmpc_model():
         # The callback functions accepts one parameter: 
         #     x (value of the optimization variables at which the objective is to be evaluated).
         # The function should return the objective function value at the point x.
+        x = x.reshape(self.Np,7)
         J = 0
         for k in range(self.N_hat-1):
             rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
-            J += np.dot(np.dot(xk-self.r1, self.Q), np.transpose(xk-self.r1)) # dist to next target
+            J += np.dot(np.dot(rk-self.r1, self.Q), np.transpose(rk-self.r1)) # dist to next target
         for k in range(self.N_hat-1, self.Np):
             rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
-            J += np.dot(np.dot(xk-self.r2, self.Q), np.transpose(xk-self.r2)) # dist to next target
+            J += np.dot(np.dot(rk-self.r2, self.Q), np.transpose(rk-self.r2)) # dist to next target
         return J
 
     def constraints(self,x):
@@ -53,6 +55,7 @@ class nmpc_model():
         # The callback functions accepts one parameter: 
         #    x (value of the optimization variables at which the constraints are to be evaluated). 
         # The function should return the constraints values at the point x.
+        x = x.reshape(self.Np,7)
         constraints = np.zeros((self.n_constraints))
         # for every type of constraint, add one for every timestep
         for k in range(self.Np-1):
@@ -78,14 +81,15 @@ class nmpc_model():
         #The callback functions accepts one parameter: 
         #   x (value of the optimization variables at which the gradient is to be evaluated). 
         # The function should return the gradient of the objective function at the point x.
-        grad = np.zeros((self.Np,self.n_var))
+        x = x.reshape(self.Np,7)
+        grad = np.zeros((self.Np,7))
         # only components for x,y are nonzero
-        for k in range(Np):
+        for k in range(self.Np):
             #x-coord
             grad[k,0] =  2*(x[k,0]-self.r1[0])
             #y-coord
             grad[k,1] =  2*(x[k,1]-self.r1[1])
-        return grad
+        return grad.reshape(self.Np*7,1)
 
     def jacobian(self,x):
         # Callback function for evaluating Jacobian of constraint functions.
@@ -95,6 +99,7 @@ class nmpc_model():
         # The values should be returned as a 1-dim numpy array 
         # (using the same order as you used when specifying the sparsity structure)
         # 7 vars -> 7Np derivatives for every constraint 
+        x = x.reshape(self.Np,7)
         Np = self.Np
         jacobian = np.zeros((2*7*Np+4*7*Np*(Np-1)+5*7*Np,1)) #input,variable, init
         offset = 0
@@ -154,11 +159,11 @@ class nmpc_model():
             tmp[0,i] = 1
             jacobian[offset:offset+Np*7] = tmp.flatten().reshape((7*Np,1))
             offset += Np*7
-
-        heatmap = jacobian.reshape((int(np.shape(jacobian)[0]/7),7))
-        plt.imshow(heatmap)
-        plt.show()
-        return J
+        print('here')
+        #heatmap = jacobian.reshape((int(np.shape(jacobian)[0]/7),7))
+        #plt.imshow(heatmap)
+        #plt.show()
+        return jacobian
 
 
     def intermediate(self,x):

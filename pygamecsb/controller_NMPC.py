@@ -2,6 +2,8 @@ import numpy as np
 import math
 import ipopt
 import nmpc_model
+from matplotlib import pyplot as plt
+
 
 class NMPC():
     ########################################################################
@@ -19,13 +21,16 @@ class NMPC():
             self.checkpoints = np.load('checkpoints.npy')
             self.n_checkpoints = self.checkpoints.shape[0]
 
+            phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
+
             self.N_hat = self.min_steps(np.array([self.checkpoints[0,0], self.checkpoints[0,1]]),\
-                            np.array([0,0]), 0, np.array([self.checkpoints[1,0], self.checkpoints[1,1]]))
+                            np.array([0,0]), phi0, np.array([self.checkpoints[1,0], self.checkpoints[1,1]]))
+            print('N_hat: ', self.N_hat)
             self.Np = self.N_hat + 1 #prediction horizon
         #else: TODO: add collision detection, lap detaction, tracking of past checkpoints
         
         self.n_constraints = 7*(self.Np-1)+5
-        self.model = nmpc_model.nmpc_model()
+        self.model = nmpc_model.nmpc_model(self.Np)
 
         #IPOPT parameters
         phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
@@ -54,11 +59,11 @@ class NMPC():
         self.N_hat = max(1, self.N_hat-1) #TODO
         self.model.update(x, v, r1, r2, self.N_hat)
 
-        x0 = np.ones((self.Np,7))
+        x0 = np.ones((self.Np*7,1))
 
         nlp = ipopt.problem(
             n=7*self.Np,
-            m=len(self.cl),
+            m=self.n_constraints,
             problem_obj=self.model,
             lb=self.lb,
             ub=self.ub,
@@ -66,10 +71,13 @@ class NMPC():
             cu=self.cu
         )
 
+        # nlp.addOption('mu_strategy', 'adaptive')
+        # nlp.addOption('tol', 1e1)
+
         #SOLVE nlp
         x, info = nlp.solve(x0)
-        print(info)
-        plt.imshow(x)
+        #print(info)
+        plt.imshow(x.reshape(self.Np,7))
         plt.show()
 
         return thrust, next_checkpoint_x, next_checkpoint_y
@@ -124,11 +132,15 @@ class NMPC():
         a_max = 100
         w_lim = math.pi/10
 
-
         #upper and lower bounds on variables
         #rx,ry,phi,vx,vy,a,w
-        lb = [x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim]
-        ub = [x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim]
+        lb = np.zeros((self.Np,7))
+        ub = np.zeros((self.Np,7))
+        for k in range(self.Np):
+            lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
+            ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
+        lb = lb.reshape(7*self.Np,1)
+        ub = ub.reshape(7*self.Np,1)
 
         #upper and lower bounds on constraint functions
         cl = np.zeros((self.n_constraints))
