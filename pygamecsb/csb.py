@@ -4,11 +4,19 @@ import numpy as np
 import datetime
 #import controller_A
 import controller_PID
+# import controller_NMPC
+########################################################################
+# enable TEST MODE here:
+test = True
+# test mode has no limits on thrust
+# -> thrust can be negative
+# test mode assumes all checkpoints 
+# known and exported to file
+########################################################################
 
 pygame.init()
 
 scale = 10
-gameSize = gameWidth, gameHeight = 1600, 900
 n_checkpoints = 6
 np.random.seed(1681)
 
@@ -21,14 +29,8 @@ background = pygame.transform.scale(background, (gameWidth, gameHeight))
 # initialize controller
 #control = controller_A.controller_A()
 control = controller_PID.PID()
-####################################
-
-####################################
-# enable test mode here:
-test = True
-# test mode has no limits on thrust
-# -> thrust can be negative
-####################################
+# control = controller_NMPC.NMPC(test, x, y, delta_angle)
+########################################################################
 
 tick = 0
 running = True
