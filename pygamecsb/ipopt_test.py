@@ -3,6 +3,13 @@ import math
 import ipopt
 from matplotlib import pyplot as plt
 
+
+r0 = np.array([1,1])
+v0 = np.array([-1,-1])
+phi0 = 2*np.pi/3
+r1 = np.array([10,10])
+r2 = np.array([0,20])
+
 ################################################################
 # DEFINITIONS
 # current state of VARIABLES x = [rx0,rx1,...vyNp-1,aNp-1,wNp-1]
@@ -185,3 +192,130 @@ class nmpc_model():
             condition_index += 1
 
         return jacobian
+
+#utility
+def min_steps(x0, v0, deltaphi0, r1):
+    x = x0
+    v = v0
+
+    t_stop = 0
+    while np.linalg.norm(v) > 0:
+        t_stop += 1
+        x = x + v
+        v[0] = int(0.85*v[0])
+        v[1] = int(0.85*v[1])
+
+    #x is now at stop position
+    x1 = x
+    print('x1: ', x1)
+    print('r1: ', r1)
+    #rotation time
+    d0 = r1 - x0 # distance vector at start point
+    dist0 = np.linalg.norm(d0)
+    d1 = r1 - x1 # distance vector at stop point
+    print('d1: ', d1)
+    dist1 = np.linalg.norm(d1)
+    print('dist: ', dist1)
+
+    phi0 = math.acos((d0[0]) / dist0) #angle of target at start
+    phi1 = math.acos((d1[0]) / dist1) #angle of target at stop
+    print('phi1: ', phi1)
+
+    deltaphi1 = (deltaphi0 + (phi0-phi1))%2*np.pi
+    t_rot = math.ceil(10 * np.abs(deltaphi1) / math.pi) #rotation time at max. +/- pi/10 per tick
+    print('t_rot: ', t_rot)
+
+    t_travel = 0 #should change condition to sign change maybe? or nondecreasing?
+    while np.abs(x[0]-r1[0]) <= 300 and np.abs(x[1]-r1[1]) <= 300:
+        print(x, v)
+        t_travel += 1
+        x = x + v
+        v[0] = int(0.85*v[0] + 85*math.cos(-phi1))
+        v[1] = int(0.85*v[1] + 85*math.sin(-phi1))
+    print('t_travel: ', t_travel)
+
+    return max(t_stop, t_rot) + t_travel
+
+
+N_hat = min_steps(r0, v0, phi0, r1)
+print('N_hat: ', N_hat)
+
+Np = N_hat + 1 #prediction horizon
+
+n_constraints = 5*(Np-1)+5
+model = nmpc_model(n_constraints)
+model.update(r0, v0, r1, r2, N_hat)
+
+x_min = -1000 #all checkpoints in [0,16000]
+x_max = 20000 #all checkpoints in [0,16000]
+y_min = -1000 #all checkpoints in [0,9000]
+y_max = 10000 #all checkpoints in [0,9000]
+phi_lim = 2*math.pi
+v_lim = 565 #actual max velocity is 561 in x and y
+#a_min = -100 if test else 0
+a_min = 0
+a_max = 100
+w_lim = math.pi/10
+
+#upper and lower bounds on variables
+#rx,ry,phi,vx,vy,a,w
+lb = np.zeros((Np,7))
+ub = np.zeros((Np,7))
+for k in range(Np):
+    lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
+    ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
+lb = lb.reshape(7*Np,1)
+ub = ub.reshape(7*Np,1)
+
+#upper and lower bounds on constraint functions
+cl = np.zeros((n_constraints))
+cu = np.zeros((n_constraints))
+
+#values for cu, cl for x,y,vx,vy,psi constraints are already zero
+cl[5*(Np-1)] = r0[0]
+cu[5*(Np-1)] = r0[0]
+cl[5*(Np-1)+1] = r0[1]
+cu[5*(Np-1)+1] = r0[1]
+cl[5*(Np-1)+2] = phi0
+cu[5*(Np-1)+2] = phi0
+cl[5*(Np-1)+3] = v0[0]
+cu[5*(Np-1)+3] = v0[0]
+cl[5*(Np-1)+4] = v0[1]
+cu[5*(Np-1)+4] = v0[1]
+#values for v0 constraints are already zero
+
+x0 = lb/2
+
+nlp = ipopt.problem(
+    n=7*Np,
+    m=n_constraints,
+    problem_obj=model,
+    lb=lb,
+    ub=ub,
+    cl=cl,
+    cu=cu
+)
+
+nlp.addOption('max_iter', 15000)
+
+#SOLVE nlp
+x, info = nlp.solve(x0)
+print(info)
+plt.imshow(x.reshape(Np,7))
+plt.show()
+x = x.reshape(-1,7)
+rx = x[:,0]
+print('rx: ', rx)
+ry = x[:,1]
+print('ry: ', ry)
+phi = x[:,2]
+print('phi: ', phi)
+vx = x[:,3]
+print('vx: ', vx)
+vy = x[:,4]
+print('vy: ', vy)
+a = x[:,5]
+print('a: ', a)
+w = x[:,6]
+print('w: ', w)
+
