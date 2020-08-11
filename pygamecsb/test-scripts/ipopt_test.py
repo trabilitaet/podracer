@@ -25,7 +25,7 @@ class nmpc_model():
         self.Np = 0
         self.N_hat = 0 #set to large value initially
 
-        self.n_constraints = n_constraints #5 tate vars + inits
+        self.n_constraints = n_constraints #5 state vars + inits
 
         self.r1 = np.array([0,0])
         self.r2 = np.array([0,0])
@@ -57,11 +57,11 @@ class nmpc_model():
         x = x.reshape(self.Np,7)
         J = 0
         for k in range(self.N_hat-1):
-            rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
-            J += np.dot(np.dot(rk-r1, self.Q), np.transpose(rk-r1)) # dist to next target
+            rk = np.array([x[k,0],x[k,1]]) # extract rx,ry in this timestep
+            J += np.dot(np.dot(rk-r1, self.Q), np.transpose(rk-r1)) 
         for k in range(self.N_hat-1, Np):
-            rk = np.array([x[k,0],x[k,1]]) # extract x,y in this timestep
-            J += np.dot(np.dot(rk-r2, self.Q), np.transpose(rk-r2)) # dist to next target
+            rk = np.array([x[k,0],x[k,1]]) # extract rx,ry in this timestep
+            J += np.dot(np.dot(rk-r2, self.Q), np.transpose(rk-r2))
         return J
 
 
@@ -250,11 +250,11 @@ x_min = -1000 #all checkpoints in [0,16000]
 x_max = 20000 #all checkpoints in [0,16000]
 y_min = -1000 #all checkpoints in [0,9000]
 y_max = 10000 #all checkpoints in [0,9000]
-phi_lim = 2*math.pi
-v_lim = 565 #actual max velocity is 561 in x and y
+phi_lim = math.pi
+v_lim = 1000 #actual max velocity is 561 in x and y
 #a_min = -100 if test else 0
 a_min = 0
-a_max = 100
+a_max = 10
 w_lim = math.pi/10
 
 #upper and lower bounds on variables
@@ -284,7 +284,7 @@ cl[5*(Np-1)+4] = v0[1]
 cu[5*(Np-1)+4] = v0[1]
 #values for v0 constraints are already zero
 
-x0 = lb/2
+x0 = ub/2
 
 nlp = ipopt.problem(
     n=7*Np,
@@ -296,13 +296,13 @@ nlp = ipopt.problem(
     cu=cu
 )
 
-nlp.addOption('max_iter', 15000)
+# nlp.addOption('max_iter', 6000)
 
 #SOLVE nlp
 x, info = nlp.solve(x0)
 print(info)
-plt.imshow(x.reshape(Np,7))
-plt.show()
+# plt.imshow(x.reshape(Np,7))
+# plt.show()
 x = x.reshape(-1,7)
 rx = x[:,0]
 print('rx: ', rx)
@@ -319,3 +319,5 @@ print('a: ', a)
 w = x[:,6]
 print('w: ', w)
 
+plt.plot(rx,ry, 'ro')
+plt.show()
