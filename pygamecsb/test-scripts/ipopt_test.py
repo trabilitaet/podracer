@@ -6,9 +6,9 @@ from matplotlib import pyplot as plt
 
 Nx = 7
 r0 = np.array([0,0])
-v0 = np.array([0,0])
-phi0 = 0
-r1 = np.array([100,500])
+v0 = np.array([-1,15])
+phi0 = -np.pi/2
+r1 = np.array([70,500])
 
 
 ################################################################
@@ -20,8 +20,8 @@ r1 = np.array([100,500])
 # rx  ry  phi  vx  vy  a  w
 ################################################################
 
-objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np-1,Np))
-# objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np))
+objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np-1,Np)) # only final
+# objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np)) #entire time
 constraint_rx = lambda x,k : x[Nx*(k+1)] - x[Nx*k] - x[Nx*k+3]
 constraint_ry = lambda x,k : x[Nx*(k+1)+1] - x[Nx*k+1] - x[Nx*k+4]
 constraint_phi = lambda x,k : x[Nx*(k+1)+2] - x[Nx*k+2] - x[Nx*k+6]
@@ -119,8 +119,8 @@ def bounds(r0,phi0,v0,Np):
         lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
         ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
         x0[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
-        x0[k,0] = r0[0] #rx
-        x0[k,1] = r0[1] #ry
+        x0[k,0] = (r1[0]-r0[0])/Np + r0[0]#rx
+        x0[k,1] = (r1[1]-r0[1])/Np + r0[1]#ry
     lb = lb.reshape(7*Np,1)
     ub = ub.reshape(7*Np,1)
     x0 = ub.reshape(7*Np,1)
@@ -158,7 +158,7 @@ def min_steps(x0,phi0,v0,r1):
     # phi0 = math.acos((d0[0]) / dist0) #angle of target at start
     phi1 = math.acos((d1[0]) / dist1) #angle of target at stop
 
-    t_rot = 10 #maximum
+    t_rot = 20 #this is an overestimation: TODO
 
     t_travel = 0
     while np.abs(x[0]-r1[0]) <= 300 and np.abs(x[1]-r1[1]) <= 300:
@@ -176,7 +176,7 @@ def min_steps(x0,phi0,v0,r1):
     print('t_rot: ', t_rot)
     print('t_travel: ', t_travel)
 
-    return max(t_stop, t_rot) + t_travel
+    return math.ceil((max(t_stop, t_rot) + t_travel))
 
 
 # N_hat = min_steps(r0, v0, phi0, r1)
@@ -201,30 +201,20 @@ nlp = ipopt.problem(
     cu=cu
 )
 
-# nlp.addOption('max_iter', 8000)
+nlp.addOption('max_iter', 100)
 
 #SOLVE nlp
 sol, info = nlp.solve(x0)
+np.save('solution', sol)
 
 sol = sol.reshape(-1,7)
-rx = sol[:,0]
-print('rx: ', rx)
-ry = sol[:,1]
-print('ry: ', ry)
-phi = sol[:,2]
-print('phi: ', phi)
-vx = sol[:,3]
-print('vx: ', vx)
-vy = sol[:,4]
-print('vy: ', vy)
-a = sol[:,5]
-print('a: ', a)
-w = sol[:,6]
-print('w: ', w)
+rx,ry,phi,vx,vy,a,w = sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
 
-
-plt.plot(rx,ry, 'ro-')
-
+#plot
+plt.subplot(6,1,(1,2))
+plt.plot(rx,ry, 'ko-')
+plt.plot(r0[0],r0[1], 'go')
+plt.plot(r1[0],r1[1], 'bo')
 
 index = 0
 for x,y in zip(rx,ry):
@@ -238,6 +228,24 @@ for x,y in zip(rx,ry):
                  ha='center') # horizontal alignment can be left, right or center
     index += 1
 
-plt.plot(r0[0],r0[1], 'go')
-plt.plot(r1[0],r1[1], 'bo')
+
+plt.subplot(6,1,3)
+plt.plot(phi, 'ko-')
+plt.xlabel("timesteps")
+plt.ylabel("angle")
+
+plt.subplot(6,1,4)
+plt.plot(vx,vy, 'ko-')
+plt.ylabel("velocity in y/x")
+
+plt.subplot(6,1,5)
+plt.plot(a, 'ko-')
+plt.xlabel("timesteps")
+plt.ylabel("acceleration")
+
+plt.subplot(6,1,6)
+plt.plot(w, 'ko-')
+plt.xlabel("timesteps")
+plt.ylabel("change in angle")
+
 plt.show()
