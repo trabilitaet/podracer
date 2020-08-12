@@ -20,8 +20,8 @@ r1 = np.array([100,500])
 # rx  ry  phi  vx  vy  a  w
 ################################################################
 
-# objective_lam = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np))
-objective_lam = lambda x : pow((r1[0]-x[Nx*(Np-1)+0]),2)+pow((r1[1]-x[Nx*(Np-1)+1]),2)
+objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np-1,Np))
+# objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np))
 constraint_rx = lambda x,k : x[Nx*(k+1)] - x[Nx*k] - x[Nx*k+3]
 constraint_ry = lambda x,k : x[Nx*(k+1)+1] - x[Nx*k+1] - x[Nx*k+4]
 constraint_phi = lambda x,k : x[Nx*(k+1)+2] - x[Nx*k+2] - x[Nx*k+6]
@@ -40,7 +40,7 @@ class nmpc_model():
         self.Np = N_hat +1
         self.n_constraints = 5*(Np-1)+5
 
-        self.grad = nda.Gradient(objective_lam)
+        self.grad = nda.Gradient(objective_all)
         self.jac = nda.Jacobian(self.constraints)
     
     ##############################################################################################
@@ -48,7 +48,7 @@ class nmpc_model():
     # RETURN a single VALUE
     ##############################################################################################
     def objective(self, x):
-        return objective_lam(x)
+        return objective_all(x)
 
 
     ##############################################################################################
@@ -138,9 +138,49 @@ def bounds(r0,phi0,v0,Np):
 
     return lb, ub, cl, cu, x0
 
+def min_steps(x0,phi0,v0,r1):
+    #minsteps
+    v = v0
+    x = x0
+
+    t_stop = 0
+    while np.linalg.norm(v) > 0:
+        t_stop += 1
+        x = x + v
+        v[0] = int(0.85*v[0])
+        v[1] = int(0.85*v[1])
+
+    #x is now at stop position
+    x1 = x
+    d1 = r1 - x1 # distance vector at stop point
+    dist1 = np.linalg.norm(d1)
+
+    # phi0 = math.acos((d0[0]) / dist0) #angle of target at start
+    phi1 = math.acos((d1[0]) / dist1) #angle of target at stop
+
+    t_rot = 10 #maximum
+
+    t_travel = 0
+    while np.abs(x[0]-r1[0]) <= 300 and np.abs(x[1]-r1[1]) <= 300:
+        print(x, v)
+        t_travel += 1
+        x = x + v
+        v[0] = int(0.85*v[0] + 85*math.cos(phi1))
+        v[1] = int(0.85*v[1] + 85*math.sin(phi1))
+
+    print('x1: ', x1)
+    print('r1: ', r1)
+    print('dist: ', dist1)
+    print('phi1: ', phi1)
+    print('t_stop: ', t_stop)
+    print('t_rot: ', t_rot)
+    print('t_travel: ', t_travel)
+
+    return max(t_stop, t_rot) + t_travel
+
 
 # N_hat = min_steps(r0, v0, phi0, r1)
-N_hat = 8
+N_hat = min_steps(r0,phi0,v0,r1)
 print('N_hat: ', N_hat)
 
 Np = N_hat + 1 #prediction horizon
