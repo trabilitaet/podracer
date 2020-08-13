@@ -108,7 +108,8 @@ class csbpod():
         dist = distance.euclidean(coordinates, checkpoint)
 
         # TODO: move the collision detection to appropriate place in code
-        if dist < game.checkpointradius:
+        # TODO: detect collision inbetween steps
+        if dist < game.checkpointradius*10:
             running = not (self.checkpointindex == (game.n_checkpoints - 1))
             self.log('checkpoint collision----------------------------------------------')
             self.log('target, coords, distance = ' + str(checkpoint) + ' ' +  str(coordinates) + ' ' + str(dist))
@@ -135,6 +136,10 @@ class game:
         self.checkpoints = np.zeros((self.n_checkpoints, 2))
 
         self.checkpointSurface = pygame.image.load("img/ckpt.png")
+        # height = pygame.Surface.get_height(self.checkpointSurface)
+        # width = pygame.Surface.get_width(self.checkpointSurface)
+        # self.checkpointSurface = pygame.transform.scale(self.checkpointSurface, (math.ceil(10*width/scale), math.ceil(10*height/scale)))
+
         # list of checkpoint rectangles
         self.checkpoints = self.genCheckpoints(n_checkpoints)
 
@@ -148,7 +153,7 @@ class game:
                 ckpt = np.array([np.random.randint(0, 0.9 * self.gameWidth),
                                  np.random.randint(0, 0.9 * self.gameHeight)])
                 for i in range(index):
-                    if distance.euclidean(ckpt, self.checkpoints[i - 1, :]) <= 450:
+                    if distance.euclidean(ckpt, self.checkpoints[i - 1, :]) <= 450/self.scale:
                         tooclose = True
                 if not tooclose:
                     checkpoints[index, :] = ckpt
@@ -161,5 +166,5 @@ class game:
         # create n rects and move to coordinates
         rect = self.checkpointSurface.get_rect()
         rect.x += (checkpoint[0] - 45)/self.scale
-        rect.y += (checkpoint[1] - +45)/self.scale
+        rect.y += (checkpoint[1] - 45)/self.scale
         return rect

@@ -27,9 +27,8 @@ class nmpc_model():
         self.n_constraints = 5*(Np-1)+5
 
         self.objective_all = lambda x : sum(pow((self.r1[0]-x[7*k+0]),2)+pow((self.r1[1]-x[7*k+1]),2) for k in range(self.Np-1,self.Np)) # only final
-        # objective_all = lambda x : sum(k**2*pow((r1[0]-x[7*k+0]),2)+k**2*pow((r1[1]-x[7*k+1]),2) for k in range(Np)) #entire time
+        # self.objective_all = lambda x : sum(pow((r1[0]-x[7*k+0]),2)+pow((r1[1]-x[7*k+1]),2) for k in range(Np)) #entire time
         
-
         self.constraint_rx = lambda x,k : x[7*(k+1)] - x[7*k] - x[7*k+3]
         self.constraint_ry = lambda x,k : x[7*(k+1)+1] - x[7*k+1] - x[7*k+4]
         self.constraint_phi = lambda x,k : x[7*(k+1)+2] - x[7*k+2] - x[7*k+6]
@@ -54,28 +53,17 @@ class nmpc_model():
     # RETURN a VECTOR of constraints values at x
     ##############################################################################################
     def constraints(self,x):
-        constraints = np.array([])
+        constraints = np.zeros((self.n_constraints))
         constraint = np.zeros((self.Np-1))
         for k in range(self.Np-1):
-            constraint[k] = self.constraint_rx(x,k)
-        constraints = np.append(constraints,constraint)
-        for k in range(self.Np-1):
-            constraint[k] = self.constraint_ry(x,k)
-        constraints = np.append(constraints,constraint)
-        for k in range(self.Np-1):
-            constraint[k] = self.constraint_phi(x,k)
-        constraints = np.append(constraints,constraint)
-        for k in range(self.Np-1):
-            constraint[k] = self.constraint_vx(x,k)
-        constraints = np.append(constraints,constraint)
-        for k in range(self.Np-1):
-            constraint[k] = self.constraint_vy(x,k)
-        constraints = np.append(constraints,constraint)
-
-        constraint = np.zeros((5))
+            constraints[k] = self.constraint_rx(x,k)
+            constraints[(self.Np-1)+k] = self.constraint_ry(x,k)
+            constraints[2*(self.Np-1)+k] = self.constraint_phi(x,k)
+            constraints[3*(self.Np-1)+k] = self.constraint_vx(x,k)
+            constraints[4*(self.Np-1)+k] = self.constraint_vy(x,k)
+        
         for j in range(5):
-            constraint[j] = self.constraint_ini(x,j)
-        constraints = np.append(constraints,constraint)
+            constraints[5*(self.Np-1)+j] = self.constraint_ini(x,j)
         return constraints
 
     ##############################################################################################

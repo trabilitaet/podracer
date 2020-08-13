@@ -13,9 +13,12 @@ class NMPC():
     # called once before the start of the game
     # given current game state, output desired thrust and heading
     ########################################################################
-    def __init__(self, test, x0, y0, delta_angle_0):
-        self.old_r0 = np.array([x0,y0])
-        self.v0 = 0
+    def __init__(self, test, x0, y0, delta_angle_0, gamesize):
+        self.r0 = np.array([x0,y0])
+        self.v0 = np.zeros((2))
+
+        self.gamewidth = gamesize[0]
+        self.gameheight = gamesize[1]
 
         self.test = test
         if self.test:
@@ -24,34 +27,54 @@ class NMPC():
             self.n_checkpoints = self.checkpoints.shape[0]
 
             self.phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
+        self.solutions = np.array([])
+
+        self.old_thrust = 0
+        self.calculated = False
         
     ########################################################################
     # MAIN interface to csb.py
     # called in every time step
     # given current game state, output desired thrust and heading
     ########################################################################
-    def calculate(self, rx, ry, r1x, r1y, delta_angle):
+    def calculate(self, rx, ry, vx, vy, r1x, r1y, delta_angle):
+        # plt.plot(rx,ry, 'rx-')
+
+        if self.calculated:
+            if self.solutions.shape[0] > 0:
+                thrust = self.solutions[0]
+                w = self.solutions[1]
+                
+                self.solutions = self.solutions[2:]
+                heading_x, heading_y = self.set_heading(w,np.array([rx,ry]),np.array([r1x,r1y]),delta_angle)
+                return thrust, heading_x, heading_y
+
+
         # TODO: make sure there are no rounding issues
         if self.test:
             checkpointindex = self.get_checkpoint_index(r1x, r1y)
             r1 = self.checkpoints[checkpointindex,:]
-            r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints),:]
+            r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints-1),:]
         else:
             r1 = r2 = np.array([r1x,r1y])
 
-        r0 = np.array([rx, ry])
-        v0 = r0-self.old_r0 ##this is not correct
-        self.old_r0 = r0
+        self.r0 = np.array([rx, ry])
+        self.v0 = np.array([vx, vy])
 
-        self.Np = self.min_steps(r0, v0, delta_angle, r1)
+        print('r0,v0,r1: ', self.r0, self.v0,r1)
+
+
+
+        self.Np = self.min_steps(self.r0, self.v0, delta_angle, r1)
+        # self.Np = 5
         print('Np: ',self.Np)
         self.n_constraints = 5*(self.Np-1) + 5
 
-        model = nmpc_model.nmpc_model(r0,v0,r1,self.Np)
+        model = nmpc_model.nmpc_model(self.r0,self.v0,r1,self.Np)
 
-        phi0 = delta_angle + math.acos((r1[0]-r0[0])/np.linalg.norm(r1-r0))
+        phi0 = delta_angle + math.acos((r1[0]-self.r0[0])/np.linalg.norm(r1-self.r0))
 
-        lb, ub, cl, cu, x0 = self.bounds(r0,r1,phi0,v0, self.Np)
+        lb, ub, cl, cu, x0 = self.bounds(self.r0,r1,phi0,self.v0, self.Np)
 
 
         nlp = ipopt.problem(
@@ -64,16 +87,49 @@ class NMPC():
             cu=cu
         )
 
-        nlp.addOption('max_iter', 5000)
+        nlp.addOption('max_iter', 100)
 
         #SOLVE nlp
         x, info = nlp.solve(x0)
+        self.calculated = True
+        for k in range(1,self.Np-1):
+            self.solutions = np.append(self.solutions, x[5+k*7])
+            self.solutions = np.append(self.solutions, x[6+k*7])
         thrust = x[5]
         w = x[6]
 
-        heading_x, heading_y = self.set_heading(w,r0,r1,delta_angle)
+        heading_x, heading_y = self.set_heading(w,self.r0,r1,delta_angle)
 
-        return thrust, heading_x, heading_y
+        print('--------------------------_DONE----------------------------')
+        # print('thrust, w, heading_x, heading_y: ', thrust, w, heading_x, heading_y)
+
+
+        sol = x.reshape(-1,7)
+        rx,ry,phi,vx,vy,a,w = sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
+
+        #plot
+        plt.plot(rx,ry, 'ko-')
+        plt.plot(self.r0[0],self.r0[1], 'go')
+        plt.plot(r1[0],r1[1], 'bo')
+        plt.xlim(0,10*self.gamewidth)
+        plt.ylim(0,10*self.gameheight)
+        plt.show()
+
+        index = 0
+        for x,y in zip(rx,ry):
+
+            label = str(index)
+
+            plt.annotate(label, # this is the text
+                         (y,x), # this is the point to label
+                         textcoords="offset points", # how to position the text
+                         xytext=(0,10), # distance from text to points (x,y)
+                         ha='center') # horizontal alignment can be left, right or center
+            index += 1
+
+        self.old_thrust = thrust
+        # return thrust, heading_x, heading_y
+        return thrust, r1x, r1y
 
 
     ########################################################################
@@ -85,9 +141,16 @@ class NMPC():
                 return index
         return -1
 
-    def min_steps(self, x0, v0, deltaphi0, r1):
-        x = x0
+    def min_steps(self, r0, v0, deltaphi0, r1):
+        x = r0
         v = v0
+
+        d0 = r1 - r0 # distance vector at start point
+        dist0 = np.linalg.norm(d0)
+        phi0 = math.acos((d0[0]) / dist0) #angle of target at start
+
+        #only need to get rid of vel in wrong direction
+        v = v0-np.dot(v0,d0/dist0)*(d0/dist0)
 
         t_stop = 0
         while np.linalg.norm(v) > 0:
@@ -99,14 +162,11 @@ class NMPC():
         x1 = x #x is now at stop position
 
         #rotation time
-        d0 = r1 - x0 # distance vector at start point
-        dist0 = np.linalg.norm(d0)
-        phi0 = math.acos((d0[0]) / dist0) #angle of target at start
         d1 = r1 - x1 # distance vector at stop point
         dist1 = np.linalg.norm(d1)
         phi1 = math.acos((d1[0]) / dist1) #angle of target at stop
 
-        deltaphi1 = (deltaphi0 + (phi0-phi1))%2*np.pi
+        deltaphi1 = (deltaphi0 + (phi0-phi1))%np.pi
         t_rot = math.ceil(10 * np.abs(deltaphi1) / math.pi) #rotation time at max. +/- pi/10 per tick
 
         t_travel = 0 #should change condition to sign change maybe? or nondecreasing?
@@ -117,15 +177,19 @@ class NMPC():
             v[1] = int(0.85*v[1] + 85*math.sin(-phi1))
 
         print('t_rot,t_stop,t_travel: ', t_rot, t_stop, t_travel)
-        return max(t_stop, t_rot) + t_travel
+        return min(max(t_stop, t_rot) + t_travel,8)
+
+        # v_max = 500 # a_max/(1-0.85)
+        # dist = np.linalg.norm(r1-r0)
+        # return min(math.ceil(dist/v_max),10)
 
     def bounds(self,r0,r1,phi0,v0,Np):
         Np = int(Np)
 
-        x_min = 00 #all checkpoints in [0,16000]
-        x_max = 20000 #all checkpoints in [0,16000]
-        y_min = 00 #all checkpoints in [0,9000]
-        y_max = 10000 #all checkpoints in [0,9000]
+        x_min = -100 
+        x_max = self.gameheight*100
+        y_min = -100 
+        y_max = self.gamewidth*100
         phi_lim = math.pi
         v_lim = 1000 #actual max velocity is 561 in x and y
         #a_min = -100 if test else 0
@@ -137,16 +201,15 @@ class NMPC():
         #rx,ry,phi,vx,vy,a,w
         lb = np.zeros((Np,7))
         ub = np.zeros((Np,7))
-        x0 = np.zeros((Np,7))
+        x0 = 0.1*np.ones((Np,7))
         for k in range(Np):
             lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
             ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
-            x0[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
-            x0[k,0] = (r1[0]-r0[0])/Np + r0[0]#rx
-            x0[k,1] = (r1[1]-r0[1])/Np + r0[1]#ry
+            # x0[k,0] = r0[0]
+            # x0[k,1] = r0[1]
         lb = lb.reshape(7*Np,1)
         ub = ub.reshape(7*Np,1)
-        x0 = ub.reshape(7*Np,1)
+        x0 = x0.reshape(7*Np,1)
 
         #upper and lower bounds on constraint functions
         cl = np.zeros((self.n_constraints))
@@ -172,7 +235,9 @@ class NMPC():
             angle = 2*np.pi - angle
 
         dx = math.cos(angle + delta_angle + w)
-        dy = math.sin(angle + delta_angle + w)
+        dy = -math.sin(angle + delta_angle + w)
+
+        print('target vs heading: ', d, dx,dy)
 
         return dx,dy
 

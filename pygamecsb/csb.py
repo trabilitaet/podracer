@@ -7,7 +7,7 @@ import controller_PID
 import controller_NMPC
 ########################################################################
 # enable TEST MODE here:
-test = True
+test = False
 # test mode has no limits on thrust
 # -> thrust can be negative
 # test mode assumes all checkpoints 
@@ -21,8 +21,9 @@ pygame.init()
 ########################################################################
 scale = 10
 gameSize = gameWidth, gameHeight = 1600, 900
-n_checkpoints = 6
-np.random.seed(1681)
+# gameSize = gameWidth, gameHeight = 800, 450
+n_checkpoints = 2
+np.random.seed(117)
 
 screen = pygame.display.set_mode(gameSize)
 game = pod.game(gameWidth, gameHeight, n_checkpoints, scale)
@@ -40,7 +41,7 @@ target_x,target_y,x,y,vx,vy,delta_angle,running=pod.getState(game, running)
 # initialize CONTROLLER
 #control = controller_A.controller_A()
 #control = controller_PID.PID()
-control = controller_NMPC.NMPC(test, target_x, target_y, delta_angle)
+control = controller_NMPC.NMPC(test, x, y, delta_angle, gameSize)
 ########################################################################
 
 tick = 0
@@ -53,10 +54,12 @@ while running:
     target_x, target_y, x, y, vx, vy, delta_angle, running = pod.getState(game, running)
 
     # delta_angle is the angle between the current heading and the target
-    thrust, heading_x, heading_y = control.calculate(x, y, target_x, target_y, delta_angle)
+    thrust, heading_x, heading_y = control.calculate(x, y, vx, vy, target_x, target_y, delta_angle)
 
     if not test:
         trust = np.clip(0,100, thrust)
+
+    print('r1: ', target_x, target_y)
 
     # move pod
     pod.move(heading_x, heading_y, thrust)
