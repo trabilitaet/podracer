@@ -3,6 +3,8 @@ import math
 import ipopt
 import nmpc_model
 from matplotlib import pyplot as plt
+import numdifftools as nda
+
 
 
 class NMPC():
@@ -38,23 +40,19 @@ class NMPC():
             r1 = r2 = np.array([r1x,r1y])
 
         r0 = np.array([rx, ry])
-        v0 = r0-self.old_r0
+        v0 = r0-self.old_r0 ##this is not correct
         self.old_r0 = r0
 
-        self.N_hat = self.min_steps(r0, v0, delta_angle, r1)
-        print('N_hat: ', self.N_hat)
-
-        self.Np = self.N_hat + 1 #prediction horizon
+        self.Np = self.min_steps(r0, v0, delta_angle, r1)
+        print('Np: ',self.Np)
         self.n_constraints = 5*(self.Np-1) + 5
 
-        model = nmpc_model.nmpc_model()
-        model.update(r0, v0, r1, r2, self.N_hat)
+        model = nmpc_model.nmpc_model(r0,v0,r1,self.Np)
 
-        lb, ub, cl, cu = self.limits(r0, v0, self.phi0)
+        phi0 = delta_angle + math.acos((r1[0]-r0[0])/np.linalg.norm(r1-r0))
 
-        print(lb.shape,ub.shape,cl.shape,cu.shape)
+        lb, ub, cl, cu, x0 = self.bounds(r0,r1,phi0,v0, self.Np)
 
-        x0 = lb/2
 
         nlp = ipopt.problem(
             n=7*self.Np,
@@ -71,8 +69,11 @@ class NMPC():
         #SOLVE nlp
         x, info = nlp.solve(x0)
         thrust = x[5]
+        w = x[6]
 
-        return thrust, next_checkpoint_x, next_checkpoint_y
+        heading_x, heading_y = self.set_heading(w,r0,r1,delta_angle)
+
+        return thrust, heading_x, heading_y
 
 
     ########################################################################
@@ -115,18 +116,18 @@ class NMPC():
             v[0] = int(0.85*v[0] + 85*math.cos(-phi1))
             v[1] = int(0.85*v[1] + 85*math.sin(-phi1))
 
+        print('t_rot,t_stop,t_travel: ', t_rot, t_stop, t_travel)
         return max(t_stop, t_rot) + t_travel
 
-    def limits(self, r0, v0, phi0):
-        Np = self.Np
-        n_constraints = self.n_constraints
+    def bounds(self,r0,r1,phi0,v0,Np):
+        Np = int(Np)
 
-        x_min = -1000 #all checkpoints in [0,16000]
+        x_min = 00 #all checkpoints in [0,16000]
         x_max = 20000 #all checkpoints in [0,16000]
-        y_min = -1000 #all checkpoints in [0,9000]
+        y_min = 00 #all checkpoints in [0,9000]
         y_max = 10000 #all checkpoints in [0,9000]
-        phi_lim = 2*math.pi
-        v_lim = 565 #actual max velocity is 561 in x and y
+        phi_lim = math.pi
+        v_lim = 1000 #actual max velocity is 561 in x and y
         #a_min = -100 if test else 0
         a_min = 0
         a_max = 100
@@ -136,25 +137,44 @@ class NMPC():
         #rx,ry,phi,vx,vy,a,w
         lb = np.zeros((Np,7))
         ub = np.zeros((Np,7))
+        x0 = np.zeros((Np,7))
         for k in range(Np):
             lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
             ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
-        lb = lb.reshape(-1,1)
-        ub = ub.reshape(-1,1)
+            x0[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
+            x0[k,0] = (r1[0]-r0[0])/Np + r0[0]#rx
+            x0[k,1] = (r1[1]-r0[1])/Np + r0[1]#ry
+        lb = lb.reshape(7*Np,1)
+        ub = ub.reshape(7*Np,1)
+        x0 = ub.reshape(7*Np,1)
 
         #upper and lower bounds on constraint functions
-        cl = np.zeros((n_constraints))
-        cu = np.zeros((n_constraints))
+        cl = np.zeros((self.n_constraints))
+        cu = np.zeros((self.n_constraints))
 
         #values for cu, cl for x,y,vx,vy,psi constraints are already zero
-        cl[5*(Np-1)] = r0[0]
-        cl[5*(Np-1)+1] = r0[1]
-        cl[5*(Np-1)+2] = phi0
-        cl[5*(Np-1)+3] = v0[0]
-        cl[5*(Np-1)+4] = v0[1]
-        cu = cl
-        #values for v0 constraints are already zero
-        return lb, ub, cl, cu
+        cl[5*(Np-1)] = cu[5*(Np-1)] =r0[0]
+        cl[5*(Np-1)+1] = cu[5*(Np-1)+1] = r0[1]
+        cl[5*(Np-1)+2] = cu[5*(Np-1)+2] = phi0
+        cl[5*(Np-1)+3] = cu[5*(Np-1)+3] = v0[0]
+        cl[5*(Np-1)+4] = cu[5*(Np-1)+4] = v0[1]
+
+        return lb, ub, cl, cu, x0
+
+    def set_heading(self,w,r0,r1,delta_angle):
+        print(w,r0,r1,delta_angle)
+        d = r1-r0
+        norm_d = np.linalg.norm(d)
+
+        angle = math.acos(d[0] / (norm_d + 1e-16))
+
+        if d[1] < 0:
+            angle = 2*np.pi - angle
+
+        dx = math.cos(angle + delta_angle + w)
+        dy = math.sin(angle + delta_angle + w)
+
+        return dx,dy
 
     def get_name(self):
         return 'NMPC'
