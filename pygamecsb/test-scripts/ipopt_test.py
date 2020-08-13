@@ -6,9 +6,9 @@ from matplotlib import pyplot as plt
 
 Nx = 7
 r0 = np.array([0,0])
-v0 = np.array([-1,15])
-phi0 = -np.pi/2
-r1 = np.array([70,500])
+v0 = np.array([10,5])
+phi0 = np.pi/2
+r1 = np.array([250,500])
 
 
 ################################################################
@@ -21,10 +21,8 @@ r1 = np.array([70,500])
 ################################################################
 
 objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np-1,Np)) # only final
-# objective_all = lambda x : sum(pow((r1[0]-x[Nx*k+0]),2)+pow((r1[1]-x[Nx*k+1]),2) for k in range(Np)) #entire time
-constraint_rx = lambda x,k : x[Nx*(k+1)] - x[Nx*k] - x[Nx*k+3]
-constraint_ry = lambda x,k : x[Nx*(k+1)+1] - x[Nx*k+1] - x[Nx*k+4]
-constraint_phi = lambda x,k : x[Nx*(k+1)+2] - x[Nx*k+2] - x[Nx*k+6]
+# objective_all = lambda x : sum(k**2*pow((r1[0]-x[Nx*k+0]),2)+k**2*pow((r1[1]-x[Nx*k+1]),2) for k in range(Np)) #entire time
+first_order_constraint = lambda x,k,var1,var2 : x[Nx*(k+1)+var1] - x[Nx*k+var1] - x[Nx*k+var2]
 constraint_vx = lambda x,k : x[Nx*(k+1)+3] - 0.85*x[Nx*k+3] - 0.85*x[Nx*k+5]*math.cos(x[Nx*k+2])
 constraint_vy = lambda x,k : x[Nx*(k+1)+4] - 0.85*x[Nx*k+4] - 0.85*x[Nx*k+5]*math.sin(x[Nx*k+2])
 constraint_ini = lambda x,j : x[j]
@@ -59,13 +57,13 @@ class nmpc_model():
         constraints = np.array([])
         constraint = np.zeros((self.Np-1))
         for k in range(self.Np-1):
-            constraint[k] = constraint_rx(x,k)
+            constraint[k] = first_order_constraint(x,k,0,3)
         constraints = np.append(constraints,constraint)
         for k in range(self.Np-1):
-            constraint[k] = constraint_ry(x,k)
+            constraint[k] = first_order_constraint(x,k,1,4)
         constraints = np.append(constraints,constraint)
         for k in range(self.Np-1):
-            constraint[k] = constraint_phi(x,k)
+            constraint[k] = first_order_constraint(x,k,2,6)
         constraints = np.append(constraints,constraint)
         for k in range(self.Np-1):
             constraint[k] = constraint_vx(x,k)
@@ -150,18 +148,21 @@ def min_steps(x0,phi0,v0,r1):
         v[0] = int(0.85*v[0])
         v[1] = int(0.85*v[1])
 
-    #x is now at stop position
     x1 = x
+    #rotation time
+    d0 = r1 - x0 # distance vector at start point
+    dist0 = np.linalg.norm(d0)
+
     d1 = r1 - x1 # distance vector at stop point
     dist1 = np.linalg.norm(d1)
 
-    # phi0 = math.acos((d0[0]) / dist0) #angle of target at start
+    phi0 = math.acos((d0[0]) / dist0) #angle of target at start
     phi1 = math.acos((d1[0]) / dist1) #angle of target at stop
 
-    t_rot = 20 #this is an overestimation: TODO
+    t_rot = math.ceil(10 * min(np.pi,abs(phi1-phi0)) / np.pi) #rotation time at max. +/- pi/10 per tick
 
     t_travel = 0
-    while np.abs(x[0]-r1[0]) <= 300 and np.abs(x[1]-r1[1]) <= 300:
+    while np.abs(x[0]-r1[0]) >= 100 and np.abs(x[1]-r1[1]) >= 100:
         print(x, v)
         t_travel += 1
         x = x + v
@@ -179,7 +180,7 @@ def min_steps(x0,phi0,v0,r1):
     return math.ceil((max(t_stop, t_rot) + t_travel))
 
 
-# N_hat = min_steps(r0, v0, phi0, r1)
+# N_hat = 5
 N_hat = min_steps(r0,phi0,v0,r1)
 print('N_hat: ', N_hat)
 
@@ -211,7 +212,7 @@ sol = sol.reshape(-1,7)
 rx,ry,phi,vx,vy,a,w = sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
 
 #plot
-plt.subplot(6,1,(1,2))
+plt.subplot(6,1,1)
 plt.plot(rx,ry, 'ko-')
 plt.plot(r0[0],r0[1], 'go')
 plt.plot(r1[0],r1[1], 'bo')
@@ -229,14 +230,18 @@ for x,y in zip(rx,ry):
     index += 1
 
 
-plt.subplot(6,1,3)
+plt.subplot(6,1,2)
 plt.plot(phi, 'ko-')
 plt.xlabel("timesteps")
 plt.ylabel("angle")
 
+plt.subplot(6,1,3)
+plt.plot(vx, 'ko-')
+plt.ylabel("velocity in x")
+
 plt.subplot(6,1,4)
-plt.plot(vx,vy, 'ko-')
-plt.ylabel("velocity in y/x")
+plt.plot(vy, 'ko-')
+plt.ylabel("velocity in y")
 
 plt.subplot(6,1,5)
 plt.plot(a, 'ko-')
