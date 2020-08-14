@@ -1,7 +1,8 @@
 import sys, pygame
 import pod
+import game
 import numpy as np
-import datetime
+import controller_A
 #import controller_A
 import controller_PID
 import controller_NMPC
@@ -26,7 +27,7 @@ n_checkpoints = 2
 np.random.seed(117)
 
 screen = pygame.display.set_mode(gameSize)
-game = pod.game(gameWidth, gameHeight, n_checkpoints, scale)
+game = game.game(gameWidth, gameHeight, n_checkpoints, scale)
 pod = pod.csbpod(scale, game.checkpoints[0,:])
 background = pygame.image.load("img/back.png")
 background = pygame.transform.scale(background, (gameWidth, gameHeight))
@@ -66,7 +67,7 @@ while running:
     # render game
     screen.blit(background, (0, 0))
     for checkpoint in game.checkpoints:
-        rect = game.CheckpointRect(checkpoint)
+        rect = game.checkpointRect(checkpoint)
         screen.blit(game.checkpointSurface, rect)
     # rotate pod (reload to make it 0 first)
     pod.surface = pygame.image.load("img/pod.png")
@@ -74,8 +75,8 @@ while running:
     screen.blit(pod.surface, pod.rect)
     pygame.display.flip()
 
-pygame.quit()
 filename = 'score' + control.get_name()
 logfile = open(filename, 'w')
 logfile.writelines('reached target in ' + str(tick) + ' ticks' + '\n')
 logfile.close()
+pygame.quit()

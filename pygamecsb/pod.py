@@ -2,8 +2,7 @@ import math
 import numpy as np
 from scipy.spatial import distance
 import pygame
-import datetime
-
+import game
 
 class csbpod():
     minVel = -600.0
@@ -17,8 +16,6 @@ class csbpod():
 
     def __init__(self, scale, checkpoint, *args, **kwargs):
         self.scale = scale
-        # internal state
-        # state= [theta, x, vx, y, vy]
         self.theta = np.random.randint(0, 359) * np.pi / 180.0
         self.x = checkpoint[0]
         self.y = checkpoint[1]
@@ -34,12 +31,6 @@ class csbpod():
         #start position and centering
         self.rect.x = self.x - 64 
         self.rect.y = self.y - 64
-
-        # logging
-        time = datetime.datetime.now()
-        filename = 'controller_A' + '.log'
-        self.logfile =  open(filename, 'w')
-
 
     def getAngle(self, target):
         # Get the angle [0,2*pi] of the vector going from pod's position to a target
@@ -109,7 +100,7 @@ class csbpod():
 
         # TODO: move the collision detection to appropriate place in code
         # TODO: detect collision inbetween steps
-        if dist < game.checkpointradius*10:
+        if dist < game.checkpointradius:
             running = not (self.checkpointindex == (game.n_checkpoints - 1))
             self.log('checkpoint collision----------------------------------------------')
             self.log('target, coords, distance = ' + str(checkpoint) + ' ' +  str(coordinates) + ' ' + str(dist))
@@ -122,49 +113,7 @@ class csbpod():
         return checkpoint[0], checkpoint[1], self.x, self.y, self.vx, self.vy, delta_angle, running
 
     def log(self, message):
-        self.logfile.writelines(message + '\n')
-
-class game:
-    # Global game parameters
-    def __init__(self, width, height, n_checkpoints, scale):
-        self.checkpointindex = 0
-        self.scale = scale
-        self.gameWidth = width*self.scale
-        self.gameHeight = height*self.scale
-        self.n_checkpoints = n_checkpoints
-        self.checkpointradius = self.gameHeight/70
-        self.checkpoints = np.zeros((self.n_checkpoints, 2))
-
-        self.checkpointSurface = pygame.image.load("img/ckpt.png")
-        # height = pygame.Surface.get_height(self.checkpointSurface)
-        # width = pygame.Surface.get_width(self.checkpointSurface)
-        # self.checkpointSurface = pygame.transform.scale(self.checkpointSurface, (math.ceil(10*width/scale), math.ceil(10*height/scale)))
-
-        # list of checkpoint rectangles
-        self.checkpoints = self.genCheckpoints(n_checkpoints)
-
-    def genCheckpoints(self, n):
-        # checkpoints is array with coords of all checkpoints
-        checkpoints = np.zeros((n, 2))
-        for index in range(n):
-            while True:
-                tooclose = False
-                # sample five checkpoints with a minimum distance between them
-                ckpt = np.array([np.random.randint(0, 0.9 * self.gameWidth),
-                                 np.random.randint(0, 0.9 * self.gameHeight)])
-                for i in range(index):
-                    if distance.euclidean(ckpt, self.checkpoints[i - 1, :]) <= 450/self.scale:
-                        tooclose = True
-                if not tooclose:
-                    checkpoints[index, :] = ckpt
-                    break
-        np.savetxt('checkpoints.txt', checkpoints)
-        np.save('checkpoints', checkpoints)
-        return checkpoints
-
-    def CheckpointRect(self, checkpoint):
-        # create n rects and move to coordinates
-        rect = self.checkpointSurface.get_rect()
-        rect.x += (checkpoint[0] - 45)/self.scale
-        rect.y += (checkpoint[1] - 45)/self.scale
-        return rect
+        filename = 'controller' + '.log'
+        logfile =  open(filename, 'w')
+        logfile.writelines(message + '\n')
+        logfile.close()
