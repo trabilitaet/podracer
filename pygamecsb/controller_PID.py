@@ -16,20 +16,25 @@ class PID():
         self.los_error = 0
         self.cum_los_error = 0
         self.old_los_error = 0
+        log('initialized PID with:')
+        log('Kp,Ki,Kd: ')
+        log(Kp)
+        log(Ki)
+        log(Kd)
 
 
-    def calculate(self, x, y, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle):
+    def calculate(self, x, y, vx, vy, next_checkpoint_x, next_checkpoint_y, next_checkpoint_angle):
         self.time += 1
 
-        print(next_checkpoint_angle)
+        log(next_checkpoint_angle)
         dist = np.linalg.norm(np.array([x,y])-np.array([next_checkpoint_x,next_checkpoint_y]))
         self.old_los_error = self.los_error
         self.los_error = math.cos(next_checkpoint_angle)*dist
-        print(self.los_error)
+        log(self.los_error)
         self.cum_los_error += self.los_error * self.time
-        print(self.cum_los_error)
+        log(self.cum_los_error)
         self.rate_los_error = (self.los_error - self.old_los_error) / self.time
-        print(self.rate_los_error)
+        log(self.rate_los_error)
 
         pid = self.Kp * self.los_error + self.Ki * self.cum_los_error + self.Kd * self.rate_los_error
         thrust = int(pid)
@@ -37,7 +42,13 @@ class PID():
 
         print("thrust: " + str(thrust))
         print("dist: ", )
-        return thrust, next_checkpoint_x, next_checkpoint_y        
+        return thrust, next_checkpoint_x, next_checkpoint_y
+
+    def log(self, message):
+        filename = 'log_' + self.get_name()
+        logfile =  open(filename, 'w')
+        logfile.writelines(str(message) + '\n')
+        logfile.close()      
 
     def get_name(self):
         return 'PID'
