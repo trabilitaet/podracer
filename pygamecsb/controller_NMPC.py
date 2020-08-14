@@ -13,12 +13,12 @@ class NMPC():
     # called once before the start of the game
     # given current game state, output desired thrust and heading
     ########################################################################
-    def __init__(self, test, x0, y0, delta_angle_0, gamesize):
+    def __init__(self, test, x0, y0, delta_angle_0, gamesize, scale):
         self.r0 = np.array([x0,y0])
         self.v0 = np.zeros((2))
 
-        self.gamewidth = gamesize[0]
-        self.gameheight = gamesize[1]
+        self.gamewidth = scale*gamesize[0]
+        self.gameheight = scale*gamesize[1]
 
         self.test = test
         if self.test:
@@ -60,9 +60,8 @@ class NMPC():
 
         self.r0 = np.array([rx, ry])
         self.v0 = np.array([vx, vy])
-
+        phi0 = delta_angle + math.acos((r1[0]-self.r0[0])/np.linalg.norm(r1-self.r0))
         print('r0,v0,r1: ', self.r0, self.v0,r1)
-
 
 
         self.Np = self.min_steps(self.r0, self.v0, delta_angle, r1)
@@ -71,9 +70,6 @@ class NMPC():
         self.n_constraints = 5*(self.Np-1) + 5
 
         model = nmpc_model.nmpc_model(self.r0,self.v0,r1,self.Np)
-
-        phi0 = delta_angle + math.acos((r1[0]-self.r0[0])/np.linalg.norm(r1-self.r0))
-
         lb, ub, cl, cu, x0 = self.bounds(self.r0,r1,phi0,self.v0, self.Np)
 
 
@@ -107,25 +103,7 @@ class NMPC():
         sol = x.reshape(-1,7)
         rx,ry,phi,vx,vy,a,w = sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
 
-        #plot
-        plt.plot(rx,ry, 'ko-')
-        plt.plot(self.r0[0],self.r0[1], 'go')
-        plt.plot(r1[0],r1[1], 'bo')
-        plt.xlim(0,10*self.gamewidth)
-        plt.ylim(0,10*self.gameheight)
-        plt.show()
-
-        index = 0
-        for x,y in zip(rx,ry):
-
-            label = str(index)
-
-            plt.annotate(label, # this is the text
-                         (y,x), # this is the point to label
-                         textcoords="offset points", # how to position the text
-                         xytext=(0,10), # distance from text to points (x,y)
-                         ha='center') # horizontal alignment can be left, right or center
-            index += 1
+        self.plot(rx,ry,self.r0,r1)
 
         self.old_thrust = thrust
         # return thrust, heading_x, heading_y
@@ -135,6 +113,25 @@ class NMPC():
     ########################################################################
     # UTILITY functions
     ########################################################################
+    def plot(self,rx,ry,r0,r1):
+        plt.plot(rx,self.gameheight-ry, 'ko-')
+        plt.plot(r0[0],self.gameheight-r0[1], 'go')
+        plt.plot(r1[0],self.gameheight-r1[1], 'bo')
+        plt.xlim(0,self.gamewidth)
+        plt.ylim(0,self.gameheight)
+
+        index = 0
+        for x,y in zip(rx,ry):
+            label = str(index)
+            plt.annotate(label, # this is the text
+                         (x,self.gameheight-y), # this is the point to label
+                         textcoords="offset points", # how to position the text
+                         xytext=(0,10), # distance from text to points (x,y)
+                         ha='center') # horizontal alignment can be left, right or center
+            index += 1
+
+        plt.show()
+
     def get_checkpoint_index(self, checkpoint_x, checkpoint_y):
         for index in range(self.n_checkpoints):
             if self.checkpoints[index,0] == checkpoint_x and self.checkpoints[index,1] == checkpoint_y:
@@ -179,17 +176,13 @@ class NMPC():
         print('t_rot,t_stop,t_travel: ', t_rot, t_stop, t_travel)
         return min(max(t_stop, t_rot) + t_travel,8)
 
-        # v_max = 500 # a_max/(1-0.85)
-        # dist = np.linalg.norm(r1-r0)
-        # return min(math.ceil(dist/v_max),10)
-
     def bounds(self,r0,r1,phi0,v0,Np):
         Np = int(Np)
 
-        x_min = -100 
-        x_max = self.gameheight*100
-        y_min = -100 
-        y_max = self.gamewidth*100
+        x_min = -self.gamewidth/2 
+        x_max = self.gameheight*10
+        y_min = -self.gamewidth/2
+        y_max = self.gamewidth*10
         phi_lim = math.pi
         v_lim = 1000 #actual max velocity is 561 in x and y
         #a_min = -100 if test else 0
