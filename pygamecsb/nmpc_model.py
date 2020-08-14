@@ -25,27 +25,17 @@ class nmpc_model():
         self.r1 = r1
         self.Np = Np
         self.n_constraints = 5*(Np-1)+5
-
-        self.objective_all = lambda x : sum(pow((self.r1[0]-x[7*k+0]),2)+pow((self.r1[1]-x[7*k+1]),2) for k in range(self.Np-1,self.Np)) # only final
-        # self.objective_all = lambda x : sum(pow((r1[0]-x[7*k+0]),2)+pow((r1[1]-x[7*k+1]),2) for k in range(Np)) #entire time
         
-        self.constraint_rx = lambda x,k : x[7*(k+1)] - x[7*k] - x[7*k+3]
-        self.constraint_ry = lambda x,k : x[7*(k+1)+1] - x[7*k+1] - x[7*k+4]
-        self.constraint_phi = lambda x,k : x[7*(k+1)+2] - x[7*k+2] - x[7*k+6]
-        self.constraint_vx = lambda x,k : x[7*(k+1)+3] - 0.85*x[7*k+3] - 0.85*x[7*k+5]*math.cos(x[7*k+2])
-        self.constraint_vy = lambda x,k : x[7*(k+1)+4] - 0.85*x[7*k+4] - 0.85*x[7*k+5]*math.sin(x[7*k+2])
-        self.constraint_ini = lambda x,j : x[j]
-
-        self.grad = nda.Gradient(self.objective_all)
+        self.grad = nda.Gradient(self.objective)
         self.jac = nda.Jacobian(self.constraints)
+        self.hess = nda.Hessian(self.compute_lagrangian)
 
-    
     ##############################################################################################
     # game OBJECTIVE function value at x
     # RETURN a single VALUE
     ##############################################################################################
     def objective(self, x):
-        return self.objective_all(x)
+        return pow((self.r1[0]-x[7*(self.Np-1)+0]),2)+pow((self.r1[1]-x[7*(self.Np-1)+1]),2)
 
 
     ##############################################################################################
@@ -56,14 +46,14 @@ class nmpc_model():
         constraints = np.zeros((self.n_constraints))
         constraint = np.zeros((self.Np-1))
         for k in range(self.Np-1):
-            constraints[k] = self.constraint_rx(x,k)
-            constraints[(self.Np-1)+k] = self.constraint_ry(x,k)
-            constraints[2*(self.Np-1)+k] = self.constraint_phi(x,k)
-            constraints[3*(self.Np-1)+k] = self.constraint_vx(x,k)
-            constraints[4*(self.Np-1)+k] = self.constraint_vy(x,k)
+            constraints[k] = x[7*(k+1)] - x[7*k] - x[7*k+3]
+            constraints[(self.Np-1)+k] = x[7*(k+1)+1] - x[7*k+1] - x[7*k+4]
+            constraints[2*(self.Np-1)+k] = x[7*(k+1)+2] - x[7*k+2] - x[7*k+6]
+            constraints[3*(self.Np-1)+k] = x[7*(k+1)+3] - 0.85*x[7*k+3] - 0.85*x[7*k+5]*math.cos(x[7*k+2])
+            constraints[4*(self.Np-1)+k] = x[7*(k+1)+4] - 0.85*x[7*k+4] - 0.85*x[7*k+5]*math.sin(x[7*k+2])
         
         for j in range(5):
-            constraints[5*(self.Np-1)+j] = self.constraint_ini(x,j)
+            constraints[5*(self.Np-1)+j] = x[j]
         return constraints
 
     ##############################################################################################
@@ -82,3 +72,15 @@ class nmpc_model():
     ##############################################################################################
     def jacobian(self,x):
         return self.jac(x)
+
+    def compute_lagrangian(self,x):
+        #lambdas attached to the end of x
+        objective = pow((self.r1[0]-x[7*(self.Np-1)+0]),2)+pow((self.r1[1]-x[7*(self.Np-1)+1]),2)
+        lagrangian = x[7*self.Np]*objective - np.dot(x[7*self.Np+1:], self.constraints(x))
+        return lagrangian
+
+    def hessian(self,x,lam,factor):
+        x = np.append(x,factor)
+        x = np.append(x,lam)
+        return self.hess(x).reshape(-1,1)
+
