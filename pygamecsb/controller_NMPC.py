@@ -5,8 +5,6 @@ import nmpc_model
 from matplotlib import pyplot as plt
 import numdifftools as nda
 
-
-
 class NMPC():
     ########################################################################
     # INIT for NMPC controller
@@ -20,6 +18,10 @@ class NMPC():
         self.gamewidth = scale*render_size[0]
         self.gameheight = scale*render_size[1]
 
+        self.Np = 8
+        self.Nvar = 7
+        self.n_constraints = 5*(self.Np-1) + 5
+
         self.test = test
         if self.test:
             # checkpoints
@@ -30,55 +32,47 @@ class NMPC():
         self.solutions = np.array([])
 
         self.old_thrust = 0
-        self.calculated = False
+
+        self.model = nmpc_model.nmpc_model()
+        self.lb, self.ub, self.cl, self.cu = self.bounds_no_inits()
+        self.sol = np.zeros((self.Nvar*self.Np))
+        self.tick = 0
+
         
     ########################################################################
     # MAIN interface to csb.py
     # called in every time step
     # given current game state, output desired thrust and heading
     ########################################################################
-    def calculate(self, rx, ry, vx, vy, r1x, r1y, delta_angle):
-        # plt.plot(rx,ry, 'rx-')
-
-        if self.calculated:
-            if self.solutions.shape[0] > 0:
-                thrust = self.solutions[0]
-                w = self.solutions[1]
-                
-                self.solutions = self.solutions[2:]
-                heading_x, heading_y = self.set_heading(w,np.array([rx,ry]),np.array([r1x,r1y]),delta_angle)
-                return thrust, heading_x, heading_y
-
-
+    def calculate(self, rx, ry, phi, vx, vy, r1x, r1y, delta_angle):
+        self.tick += 1
+        r0 = np.array([rx,ry])
+        v0 = np.array([vx,vy])
+        phi0 = phi
         # TODO: make sure there are no rounding issues
         if self.test:
             checkpointindex = self.get_checkpoint_index(r1x, r1y)
             r1 = self.checkpoints[checkpointindex,:]
-            r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints-1),:]
+            # r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints-1),:]
         else:
-            r1 = r2 = np.array([r1x,r1y])
+            r1 = np.array([r1x,r1y])
 
         self.r0 = np.array([rx, ry])
-        self.v0 = np.array([vx, vy])
-        phi0 = delta_angle + math.acos((r1[0]-self.r0[0])/np.linalg.norm(r1-self.r0))
-        print('r0,v0,r1: ', self.r0, self.v0,r1)
+        self.v0 = np.array([vx, vy])        
 
+        ############ new x0, bounds as inital guess from old prediction 
+        # self.Np = min_steps(r0, v0, delta_angle, r1)
+        self.model.update_state(r1)
+        x0 = self.set_guess()
 
-        self.Np = self.min_steps(self.r0, self.v0, delta_angle, r1)
-        # self.Np = 5
-        print('Np: ',self.Np)
-        self.n_constraints = 5*(self.Np-1) + 5
-
-        model = nmpc_model.nmpc_model(self.r0,self.v0,r1,self.Np)
-        lb, ub, cl, cu, x0 = self.bounds(self.r0,r1,phi0,self.v0, self.Np)
-
+        cl, cu = self.bounds_inits(r0, phi0, v0)
 
         nlp = ipopt.problem(
-            n=7*self.Np,
+            n=self.Nvar*self.Np,
             m=self.n_constraints,
-            problem_obj=model,
-            lb=lb,
-            ub=ub,
+            problem_obj=self.model,
+            lb=self.lb,
+            ub=self.ub,
             cl=cl,
             cu=cu
         )
@@ -86,26 +80,16 @@ class NMPC():
         nlp.addOption('max_iter', 100)
 
         #SOLVE nlp
-        x, info = nlp.solve(x0)
-        self.calculated = True
-        for k in range(1,self.Np-1):
-            self.solutions = np.append(self.solutions, x[5+k*7])
-            self.solutions = np.append(self.solutions, x[6+k*7])
-        thrust = x[5]
-        w = x[6]
+        self.sol, info = nlp.solve(x0)
+        thrust = self.sol[5]
+        w = self.sol[6]
 
-        heading_x, heading_y = self.set_heading(w,self.r0,r1,delta_angle)
+        heading_x, heading_y = self.set_heading(w,phi0)
 
         print('--------------------------_DONE----------------------------')
-        # print('thrust, w, heading_x, heading_y: ', thrust, w, heading_x, heading_y)
 
-
-        sol = x.reshape(-1,7)
-        rx,ry,phi,vx,vy,a,w = sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
-
-        self.plot(rx,ry,self.r0,r1)
-
-        self.old_thrust = thrust
+        sol = self.sol.reshape(-1,self.Nvar)
+        self.plot(sol[:,0], sol[:,1], r0, r1, self.tick)
         # return thrust, heading_x, heading_y
         return thrust, r1x, r1y
 
@@ -113,7 +97,7 @@ class NMPC():
     ########################################################################
     # UTILITY functions
     ########################################################################
-    def plot(self,rx,ry,r0,r1):
+    def plot(self, rx, ry, r0, r1, tick):
         plt.plot(rx,self.gameheight-ry, 'ko-')
         plt.plot(r0[0],self.gameheight-r0[1], 'go')
         plt.plot(r1[0],self.gameheight-r1[1], 'bo')
@@ -130,13 +114,52 @@ class NMPC():
                          ha='center') # horizontal alignment can be left, right or center
             index += 1
 
-        plt.show()
+        plt.savefig('fig_' + str(tick) + '.png')
+        plt.clf()
 
     def get_checkpoint_index(self, checkpoint_x, checkpoint_y):
         for index in range(self.n_checkpoints):
             if self.checkpoints[index,0] == checkpoint_x and self.checkpoints[index,1] == checkpoint_y:
                 return index
         return -1
+
+    def bounds_no_inits(self):
+        x_min = -self.gamewidth/2 
+        x_max = self.gameheight*10
+        y_min = -self.gamewidth/2
+        y_max = self.gamewidth*10
+        phi_lim = math.pi
+        v_lim = 10000 #actual max velocity is 561 in x and y
+        #a_min = -100 if test else 0
+        a_min = 0
+        a_max = 100
+        w_lim = math.pi/10
+
+        #upper and lower bounds on variables
+        #rx,ry,phi,vx,vy,a,w
+        lb = np.zeros((self.Np,self.Nvar))
+        ub = np.zeros((self.Np,self.Nvar))
+        for k in range(self.Np):
+            lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
+            ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
+        lb = lb.reshape(self.Nvar*self.Np,1)
+        ub = ub.reshape(self.Nvar*self.Np,1)
+
+        #upper and lower bounds on constraint functions
+        cl = np.zeros((self.n_constraints))
+        cu = np.zeros((self.n_constraints))
+        return lb, ub, cl, cu
+
+    def bounds_inits(self, r0, phi0, v0):
+        cl = self.cl
+        cu = self.cl
+        cl[5*(self.Np-1)] = cu[5*(self.Np-1)] =r0[0]
+        cl[5*(self.Np-1)+1] = cu[5*(self.Np-1)+1] = r0[1]
+        cl[5*(self.Np-1)+2] = cu[5*(self.Np-1)+2] = phi0
+        cl[5*(self.Np-1)+3] = cu[5*(self.Np-1)+3] = v0[0]
+        cl[5*(self.Np-1)+4] = cu[5*(self.Np-1)+4] = v0[1]
+        return cl, cu
+
 
     def min_steps(self, r0, v0, deltaphi0, r1):
         x = r0
@@ -176,63 +199,18 @@ class NMPC():
         print('t_rot,t_stop,t_travel: ', t_rot, t_stop, t_travel)
         return min(max(t_stop, t_rot) + t_travel,8)
 
-    def bounds(self,r0,r1,phi0,v0,Np):
-        Np = int(Np)
+    def set_heading(self, w, phi0):
+        dx = math.cos(phi0 + w)
+        dy = -math.sin(phi0 + w)
 
-        x_min = -self.gamewidth/2 
-        x_max = self.gameheight*10
-        y_min = -self.gamewidth/2
-        y_max = self.gamewidth*10
-        phi_lim = math.pi
-        v_lim = 1000 #actual max velocity is 561 in x and y
-        #a_min = -100 if test else 0
-        a_min = 0
-        a_max = 100
-        w_lim = math.pi/10
-
-        #upper and lower bounds on variables
-        #rx,ry,phi,vx,vy,a,w
-        lb = np.zeros((Np,7))
-        ub = np.zeros((Np,7))
-        x0 = 0.1*np.ones((Np,7))
-        for k in range(Np):
-            lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
-            ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
-            # x0[k,0] = r0[0]
-            # x0[k,1] = r0[1]
-        lb = lb.reshape(7*Np,1)
-        ub = ub.reshape(7*Np,1)
-        x0 = x0.reshape(7*Np,1)
-
-        #upper and lower bounds on constraint functions
-        cl = np.zeros((self.n_constraints))
-        cu = np.zeros((self.n_constraints))
-
-        #values for cu, cl for x,y,vx,vy,psi constraints are already zero
-        cl[5*(Np-1)] = cu[5*(Np-1)] =r0[0]
-        cl[5*(Np-1)+1] = cu[5*(Np-1)+1] = r0[1]
-        cl[5*(Np-1)+2] = cu[5*(Np-1)+2] = phi0
-        cl[5*(Np-1)+3] = cu[5*(Np-1)+3] = v0[0]
-        cl[5*(Np-1)+4] = cu[5*(Np-1)+4] = v0[1]
-
-        return lb, ub, cl, cu, x0
-
-    def set_heading(self,w,r0,r1,delta_angle):
-        print(w,r0,r1,delta_angle)
-        d = r1-r0
-        norm_d = np.linalg.norm(d)
-
-        angle = math.acos(d[0] / (norm_d + 1e-16))
-
-        if d[1] < 0:
-            angle = 2*np.pi - angle
-
-        dx = math.cos(angle + delta_angle + w)
-        dy = -math.sin(angle + delta_angle + w)
-
-        print('target vs heading: ', d, dx,dy)
+        print('heading: ',dx,dy)
 
         return dx,dy
+
+    def set_guess(self):
+        x0 = np.zeros((self.Nvar*self.Np))
+        x0[:self.Nvar*(self.Np-1)] = self.sol[self.Nvar:] #remove step already taken
+        return x0
 
     def get_name(self):
         return 'NMPC'

@@ -4,7 +4,6 @@ import ipopt
 from matplotlib import pyplot as plt
 import numdifftools as nda
 
-
 ################################################################
 # DEFINITIONS
 # current state of VARIABLES x = [rx0,rx1,...vyNp-1,aNp-1,wNp-1]
@@ -14,28 +13,28 @@ import numdifftools as nda
 # rx  ry  phi  vx  vy  a  w
 ################################################################
 
-
-
 class nmpc_model():
-    def __init__(self,r0,v0,r1,Np):
+    def __init__(self):
         self.Q = np.array([[1,0],[0,1]])
 
-        self.x0 = r0
-        self.v0 = v0
-        self.r1 = r1
-        self.Np = Np
-        self.n_constraints = 5*(Np-1)+5
-        
         self.grad = nda.Gradient(self.objective)
         self.jac = nda.Jacobian(self.constraints)
-        self.hess = nda.Hessian(self.compute_lagrangian)
+        # self.hess = nda.Hessian(self.compute_lagrangian)
+
+        self.r1 = np.zeros((2))
+        self.Np = 8
+        self.n_constraints = 5*(self.Np-1)+5
+
+    def update_state(self, r1):
+        self.r1 = r1
+        
 
     ##############################################################################################
     # game OBJECTIVE function value at x
     # RETURN a single VALUE
     ##############################################################################################
     def objective(self, x):
-        return pow((self.r1[0]-x[7*(self.Np-1)+0]),2)+pow((self.r1[1]-x[7*(self.Np-1)+1]),2)
+        return sum(pow((self.r1[0]-x[7*k+0]),2)+pow((self.r1[1]-x[7*k+1]),2) for k in range(self.Np-1))
 
 
     ##############################################################################################
