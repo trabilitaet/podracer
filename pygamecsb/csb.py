@@ -21,28 +21,28 @@ pygame.init()
 # set GAME PARAMETERS here
 ########################################################################
 scale = 10
-gameSize = gameWidth, gameHeight = 1600, 900
+renderSize = renderWidth, renderHeight = 1600, 900
 # gameSize = gameWidth, gameHeight = 800, 450
 n_checkpoints = 2
 np.random.seed(117)
 
-screen = pygame.display.set_mode(gameSize)
-game = game.game(gameWidth, gameHeight, n_checkpoints, scale)
+screen = pygame.display.set_mode(renderSize)
+game = game.game(renderWidth, renderHeight, n_checkpoints, scale)
 pod = pod.csbpod(scale, game.checkpoints[0,:])
 background = pygame.image.load("img/back.png")
-background = pygame.transform.scale(background, (gameWidth, gameHeight))
+background = pygame.transform.scale(background, (renderWidth, renderHeight))
 running = True
 
 ########################################################################
 # get INITIAL CONDITIONS
-target_x,target_y,x,y,vx,vy,delta_angle,running=pod.getState(game, running)
+target_x,target_y,x,y,theta,vx,vy,delta_angle,running=pod.getState(game, running)
 ########################################################################
 
 ########################################################################
 # initialize CONTROLLER
 #control = controller_A.controller_A()
 #control = controller_PID.PID()
-control = controller_NMPC.NMPC(test, x, y, delta_angle, gameSize)
+control = controller_NMPC.NMPC(test, x, y, delta_angle, renderSize, scale)
 ########################################################################
 
 tick = 0
@@ -52,10 +52,10 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
 
-    target_x, target_y, x, y, vx, vy, delta_angle, running = pod.getState(game, running)
+    target_x, target_y, x, y, theta, vx, vy, delta_angle, running = pod.getState(game, running)
 
     # delta_angle is the angle between the current heading and the target
-    thrust, heading_x, heading_y = control.calculate(x, y, vx, vy, target_x, target_y, delta_angle)
+    thrust, heading_x, heading_y = control.calculate(x, y, theta, vx, vy, target_x, target_y, delta_angle)
 
     if not test:
         trust = np.clip(0,100, thrust)
@@ -63,7 +63,7 @@ while running:
     print('r1: ', target_x, target_y)
 
     # move pod
-    pod.move(heading_x, heading_y, thrust)
+    pod.move(heading_x, heading_y, thrust, game)
     # render game
     screen.blit(background, (0, 0))
     for checkpoint in game.checkpoints:

@@ -13,12 +13,12 @@ class NMPC():
     # called once before the start of the game
     # given current game state, output desired thrust and heading
     ########################################################################
-    def __init__(self, test, x0, y0, delta_angle_0, gamesize, scale):
+    def __init__(self, test, x0, y0, delta_angle_0, render_size, scale):
         self.r0 = np.array([x0,y0])
         self.v0 = np.zeros((2))
 
-        self.gamewidth = scale*gamesize[0]
-        self.gameheight = scale*gamesize[1]
+        self.gamewidth = scale*render_size[0]
+        self.gameheight = scale*render_size[1]
 
         self.test = test
         if self.test:
