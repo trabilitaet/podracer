@@ -12,13 +12,15 @@ class game:
         self.gameWidth = width*self.scale
         self.gameHeight = height*self.scale
         self.n_checkpoints = n_checkpoints
-        self.checkpointradius = self.gameHeight/70
+        self.checkpointradius = int(self.gameHeight/(2*self.scale))
+        print('checkpointradius: ', self.checkpointradius)
         self.checkpoints = np.zeros((self.n_checkpoints, 2))
 
         self.checkpointSurface = pygame.image.load("img/ckpt.png")
         
         # list of checkpoint rectangles
         self.checkpoints = self.genCheckpoints(n_checkpoints)
+        game.running = True
 
     def genCheckpoints(self, n):
         # checkpoints is array with coords of all checkpoints

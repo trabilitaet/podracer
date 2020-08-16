@@ -35,7 +35,7 @@ running = True
 
 ########################################################################
 # get INITIAL CONDITIONS
-target_x,target_y,x,y,theta,vx,vy,delta_angle,running=pod.getState(game, running)
+target_x,target_y,x,y,theta,vx,vy,delta_angle,running=pod.getState(game)
 ########################################################################
 
 ########################################################################
@@ -52,7 +52,7 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
 
-    target_x, target_y, x, y, theta, vx, vy, delta_angle, running = pod.getState(game, running)
+    target_x, target_y, x, y, theta, vx, vy, delta_angle, running = pod.getState(game)
 
     # delta_angle is the angle between the current heading and the target
     thrust, heading_x, heading_y = control.calculate(x, y, theta, vx, vy, target_x, target_y, delta_angle)
