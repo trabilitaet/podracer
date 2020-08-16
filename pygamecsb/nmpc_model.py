@@ -15,11 +15,6 @@ import numdifftools as nda
 
 class nmpc_model():
     def __init__(self):
-        self.Q = np.array([[1,0],[0,1]])
-
-        self.grad = nda.Gradient(self.objective)
-        # self.hess = nda.Hessian(self.compute_lagrangian)
-
         self.r1 = np.zeros((2))
         self.Np = 8
         self.n_constraints = 5*(self.Np-1)+5
@@ -59,7 +54,12 @@ class nmpc_model():
     # RETURN a VECTOR of derivatives at x
     ##############################################################################################
     def gradient(self,x):
-        return self.grad(x)
+        grad = np.zeros((7*self.Np))
+        for k in range(self.Np):
+            grad[7*k+0] = 2*(x[7*k+0]-self.r1[0])
+            grad[7*k+1] = 2*(x[7*k+1]-self.r1[1])
+        return grad
+
 
     ##############################################################################################
     # JACOBIAN of CONSTRAINTS functions
