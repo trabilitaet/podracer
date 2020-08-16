@@ -18,7 +18,6 @@ class nmpc_model():
         self.Q = np.array([[1,0],[0,1]])
 
         self.grad = nda.Gradient(self.objective)
-        self.jac = nda.Jacobian(self.constraints)
         # self.hess = nda.Hessian(self.compute_lagrangian)
 
         self.r1 = np.zeros((2))
@@ -70,16 +69,68 @@ class nmpc_model():
     # RETURN a VECTOR of derivatives evaluated at x
     ##############################################################################################
     def jacobian(self,x):
-        return self.jac(x)
+        Np = self.Np
+        n_constraints = 5*(Np-1)+5
+        n_vars = 7*Np
 
-    def compute_lagrangian(self,x):
-        #lambdas attached to the end of x
-        objective = pow((self.r1[0]-x[7*(self.Np-1)+0]),2)+pow((self.r1[1]-x[7*(self.Np-1)+1]),2)
-        lagrangian = x[7*self.Np]*objective - np.dot(x[7*self.Np+1:], self.constraints(x))
-        return lagrangian
+        jacobian = np.zeros((n_constraints,n_vars)) #input,variable, init
+        print(np.shape(jacobian))
+        condition_index = 0
 
-    def hessian(self,x,lam,factor):
-        x = np.append(x,factor)
-        x = np.append(x,lam)
-        return self.hess(x).reshape(-1,1)
+        # change in position constraint in x
+        for k in range(Np-1):
+            tmp = np.zeros((n_vars))
+            tmp[7*k] = -1   #rx,t
+            tmp[7*k+3] = -1 #vx,t
+            tmp[7*k+7] = 1 #rx,t+1
+            jacobian[condition_index,:] = tmp
+            condition_index +=1
+
+        # change in position constraint in y
+        for k in range(Np-1):
+            tmp = np.zeros((n_vars))
+            tmp[7*k+1] = -1 #ry,t
+            tmp[7*k+4] = -1 #vy,t
+            tmp[7*k+8] = 1 #ry,t+1
+            jacobian[condition_index,:] = tmp
+            condition_index +=1
+
+        # change in angle constraints psi
+        for k in range(Np-1):
+            tmp = np.zeros((n_vars))
+            tmp[7*k+2] = -1 #phi,t
+            tmp[7*k+6] = -1 #w,t
+            tmp[7*k+9] = 1 #phi,t+1
+            jacobian[condition_index,:] = tmp
+            condition_index +=1
+
+        # change in velocity constraints
+        for k in range(Np-1):
+            tmp = np.zeros((n_vars))
+            tmp[7*k+2] =  0.85*x[7*k+5]*math.sin(x[7*k+2]) #psi[t]
+            tmp[7*k+3] = -0.85 #vx[t]
+            tmp[7*k+5] = -0.85*math.cos(x[7*k+2]) #a[t]
+            tmp[7*k+10] = 1 #vx[t+1]
+            jacobian[condition_index,:] = tmp
+            condition_index += 1
+
+        #TODO check signs for these
+        for k in range(Np-1):
+            tmp = np.zeros((n_vars))
+            tmp[7*k+2] = -0.85*x[7*k+5]*math.cos(x[7*k+2]) #psi[t]
+            tmp[7*k+4] = -0.85 #vy[t]
+            tmp[7*k+5] = -0.85*math.sin(x[7*k+2]) #a[t]
+            tmp[7*k+11] = 1 #vy[t+1]
+            jacobian[condition_index,:] = tmp
+            condition_index += 1
+
+        # initial conditions
+        for index in range(5):
+            tmp = np.zeros(n_vars)
+            tmp[index] = 1
+            jacobian[condition_index,:] = tmp
+            condition_index += 1
+        
+        return jacobian
+
 
