@@ -67,7 +67,7 @@ class csbpod():
         else:
             return -left
 
-    def move(self, targetX, targetY, thrust):
+    def move(self, targetX, targetY, thrust, game):
         # update angle
         omega = np.clip(self.getDeltaAngle(np.array([targetX, targetY])), -self.maxSteeringAngle, self.maxSteeringAngle)
         self.theta += omega
@@ -89,8 +89,27 @@ class csbpod():
 
         self.log('x, y, vx, vy, theta:')
         self.log(str(self.x) + ' ' + str(self.y) + ' ' + str(self.vx) + ' ' + str(self.vy) + ' ' + str(self.theta))
-        self.rect.x = self.x/self.scale
-        self.rect.y = self.y/self.scale
+        self.rect.x = self.x/self.scale-64
+        self.rect.y = self.y/self.scale-64
+
+        self.check_for_collision(game)
+
+
+    def check_for_collision(self, game):
+        print('checking for collision--------------------------------------------------')
+        coordinates = np.array([self.x, self.y])
+        checkpoint = game.checkpoints[self.checkpointindex]
+        dist = distance.euclidean(coordinates, checkpoint)
+
+        # TODO: detect collision inbetween steps
+        if dist < game.checkpointradius:
+            self.running = not (self.checkpointindex == (game.n_checkpoints - 1))
+            print('checkpoint collision----------------------------------------------')
+            self.log('checkpoint collision----------------------------------------------')
+            self.log('target, coords, distance = ' + str(checkpoint) + ' ' +  str(coordinates) + ' ' + str(dist))
+            self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))
+            self.checkpointindex = game.checkpointindex + 1
+            game.checkpointindex = self.checkpointindex
 
     def getState(self, game, running):
         # check for collision
@@ -98,19 +117,9 @@ class csbpod():
         checkpoint = game.checkpoints[self.checkpointindex]
         dist = distance.euclidean(coordinates, checkpoint)
 
-        # TODO: move the collision detection to appropriate place in code
-        # TODO: detect collision inbetween steps
-        if dist < game.checkpointradius:
-            running = not (self.checkpointindex == (game.n_checkpoints - 1))
-            self.log('checkpoint collision----------------------------------------------')
-            self.log('target, coords, distance = ' + str(checkpoint) + ' ' +  str(coordinates) + ' ' + str(dist))
-            self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))
-            self.checkpointindex = game.checkpointindex + 1
-            game.checkpointindex = self.checkpointindex
-
         # get angle between current heading theta and the next checkpoint
         delta_angle = self.getDeltaAngle(np.array([checkpoint[0], checkpoint[1]]))
-        return checkpoint[0], checkpoint[1], self.x, self.y, self.vx, self.vy, delta_angle, running
+        return checkpoint[0], checkpoint[1], self.x, self.y, self.theta, self.vx, self.vy, delta_angle, running
 
     def log(self, message):
         filename = 'controller' + '.log'

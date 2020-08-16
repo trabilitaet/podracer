@@ -42,6 +42,6 @@ class game:
     def checkpointRect(self, checkpoint):
         # create n rects and move to coordinates
         rect = self.checkpointSurface.get_rect()
-        rect.x += (checkpoint[0] - 45)/self.scale
-        rect.y += (checkpoint[1] - 45)/self.scale
+        rect.x += (checkpoint[0])/self.scale - 45
+        rect.y += (checkpoint[1])/self.scale - 45
         return rect
