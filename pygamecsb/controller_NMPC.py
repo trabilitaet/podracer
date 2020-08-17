@@ -89,14 +89,19 @@ class NMPC():
         print('-----------------------OPT_DONE-------------------------')
 
         sol = self.sol.reshape(-1,self.Nvar)
-        self.plot(sol[:,0], sol[:,1], r0, r1, self.tick)
+        self.plot(sol, r0, r1, self.tick)
         return thrust, r1x, r1y
 
 
     ########################################################################
     # UTILITY functions
     ########################################################################
-    def plot(self, rx, ry, r0, r1, tick):
+    def plot(self, sol, r0, r1, tick):
+
+        rx,ry,phi,vx,vy,a,w=sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
+        plt.subplot(6,1,1)
+        plt.xlabel('rx')
+        plt.ylabel('ry')
         plt.plot(rx,self.gameheight-ry, 'ko-')
         plt.plot(r0[0],self.gameheight-r0[1], 'go')
         plt.plot(r1[0],self.gameheight-r1[1], 'bo')
@@ -113,7 +118,27 @@ class NMPC():
                          ha='center') # horizontal alignment can be left, right or center
             index += 1
 
-        plt.savefig('fig_' + str(tick) + '.png')
+        plt.subplot(6,1,2)
+        plt.ylabel('phi')
+        plt.plot(phi, 'ko-')
+
+        plt.subplot(6,1,3)
+        plt.ylabel('vx')
+        plt.plot(vx, 'ko-')
+
+        plt.subplot(6,1,4)
+        plt.ylabel('vy')
+        plt.plot(vy, 'ko-')
+
+        plt.subplot(6,1,5)
+        plt.ylabel('a')
+        plt.plot(a, 'ko-')
+
+        plt.subplot(6,1,6)
+        plt.ylabel('w')
+        plt.plot(w, 'ko-')
+
+        plt.savefig('run/fig_' + str(tick) + '.png')
         plt.clf()
 
     def get_checkpoint_index(self, checkpoint_x, checkpoint_y):
