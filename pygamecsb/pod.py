@@ -19,6 +19,9 @@ class csbpod():
         self.theta = np.random.randint(0, 359) * np.pi / 180.0
         self.x = checkpoint[0]
         self.y = checkpoint[1]
+        self.old_x = checkpoint[0]
+        self.old_y = checkpoint[1]
+        self.r0 = np.array([0,0])
         self.vx = 0
         self.vy = 0
         self.x_prev = None
@@ -68,6 +71,9 @@ class csbpod():
             return -left
 
     def move(self, targetX, targetY, thrust, game):
+        self.r1 = np.array([targetX,targetY])
+        self.old_x = self.x
+        self.old_y = self.y
         # update angle
         omega = np.clip(self.getDeltaAngle(np.array([targetX, targetY])), -self.maxSteeringAngle, self.maxSteeringAngle)
         self.theta += omega
@@ -97,12 +103,19 @@ class csbpod():
 
     def check_for_collision(self, game):
         print('checking for collision--------------------------------------------------')
+        old_coordinates = np.array([self.old_x, self.old_y])
         coordinates = np.array([self.x, self.y])
+        step = coordinates-old_coordinates
         checkpoint = game.checkpoints[self.checkpointindex]
         dist = distance.euclidean(coordinates, checkpoint)
 
-        # TODO: detect collision inbetween steps
-        if dist < game.checkpointradius:
+        #detect collision inbetween steps
+        if np.linalg.norm(step):
+            AB = step/np.linalg.norm(step)
+            AD = np.dot(AB,self.r1-old_coordinates)
+            dist = math.sqrt(np.linalg.norm(AB)**2+np.linalg.norm(AD)**2)
+
+        if dist <= game.checkpointradius:
             self.running = not (self.checkpointindex == (game.n_checkpoints - 1))
             print('checkpoint collision----------------------------------------------')
             self.log('checkpoint collision----------------------------------------------')

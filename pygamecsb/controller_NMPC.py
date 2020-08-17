@@ -5,6 +5,8 @@ import nmpc_model
 from matplotlib import pyplot as plt
 import numdifftools as nda
 
+plot_results = True
+
 class NMPC():
     ########################################################################
     # INIT for NMPC controller
@@ -85,6 +87,8 @@ class NMPC():
 
         sol = self.sol.reshape(-1,self.Nvar)
         self.plot(sol, r0, r1, self.tick)
+        if plot_results:
+            self.plot(sol, r0, r1, self.tick)
         return thrust, r1x, r1y
 
 
@@ -92,7 +96,6 @@ class NMPC():
     # UTILITY functions
     ########################################################################
     def plot(self, sol, r0, r1, tick):
-
         rx,ry,phi,vx,vy,a,w=sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
         plt.subplot(6,1,1)
         plt.xlabel('rx')
