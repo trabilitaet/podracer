@@ -152,7 +152,7 @@ class NMPC():
         x_max = self.gameheight*10
         y_min = -self.gamewidth/2
         y_max = self.gamewidth*10
-        phi_lim = math.pi
+        phi_lim = 2*math.pi
         v_lim = 10000 #actual max velocity is 561 in x and y
         #a_min = -100 if test else 0
         a_min = 0
