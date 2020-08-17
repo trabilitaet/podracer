@@ -16,7 +16,7 @@ import numdifftools as nda
 class nmpc_model():
     def __init__(self):
         self.r1 = np.zeros((2))
-        self.Np = 8
+        self.Np = 10
         self.n_constraints = 5*(self.Np-1)+5
 
     def update_state(self, r1):

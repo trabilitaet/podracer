@@ -18,7 +18,7 @@ class NMPC():
         self.gamewidth = scale*render_size[0]
         self.gameheight = scale*render_size[1]
 
-        self.Np = 8
+        self.Np = 10
         self.Nvar = 7
         self.n_constraints = 5*(self.Np-1) + 5
 
@@ -77,7 +77,7 @@ class NMPC():
             cu=cu
         )
 
-        nlp.addOption('max_iter', 100)
+        nlp.addOption('max_iter', 500)
 
         #SOLVE nlp
         self.sol, info = nlp.solve(x0)
@@ -86,11 +86,10 @@ class NMPC():
 
         heading_x, heading_y = self.set_heading(w,phi0)
 
-        print('--------------------------_DONE----------------------------')
+        print('-----------------------OPT_DONE-------------------------')
 
         sol = self.sol.reshape(-1,self.Nvar)
         self.plot(sol[:,0], sol[:,1], r0, r1, self.tick)
-        # return thrust, heading_x, heading_y
         return thrust, r1x, r1y
 
 

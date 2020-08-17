@@ -32,7 +32,7 @@ class game:
                 ckpt = np.array([np.random.randint(0, 0.9 * self.gameWidth),
                                  np.random.randint(0, 0.9 * self.gameHeight)])
                 for i in range(index):
-                    if distance.euclidean(ckpt, self.checkpoints[i - 1, :]) <= 450/self.scale:
+                    if distance.euclidean(ckpt, self.checkpoints[i - 1, :]) <= 450*self.scale:
                         tooclose = True
                 if not tooclose:
                     checkpoints[index, :] = ckpt
