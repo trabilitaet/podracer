@@ -18,19 +18,27 @@ class nmpc_model():
         self.r1 = np.zeros((2))
         self.r2 = np.zeros((2))
         self.Np = 10
+        self.N_hat = 10
         self.n_constraints = 5*(self.Np-1)+5
 
     def update_state(self, r1, r2):
         self.r1 = r1
         self.r2 = r2
         
+    def set_N_hat(self,index):
+        self.N_hat = index
+
 
     ##############################################################################################
     # game OBJECTIVE function value at x
     # RETURN a single VALUE
     ##############################################################################################
     def objective(self, x):
-        return sum((x[7*k]-self.r1[0])**2+(x[7*k+1]-self.r1[1])**2 for k in range(self.Np))
+        if self.Np == self.N_hat or np.linalg.dist(r1,r2) == 0:
+            return sum((x[7*k]-self.r1[0])**2+(x[7*k+1]-self.r1[1])**2 for k in range(self.Np))
+        obj = sum((x[7*k]-self.r1[0])**2+(x[7*k+1]-self.r1[1])**2 for k in range(self.N_hat))
+        obj += sum((x[7*k]-self.r2[0])**2+(x[7*k+1]-self.r2[1])**2 for k in range(self.N_hat, self.Np))
+        return obj 
 
 
     ##############################################################################################
@@ -57,9 +65,17 @@ class nmpc_model():
     ##############################################################################################
     def gradient(self,x):
         grad = np.zeros((7*self.Np))
-        for k in range(self.Np):
+        if self.Np == self.N_hat or np.linalg.dist(r1,r2) == 0:
+            for k in range(self.Np):
+                grad[7*k+0] = 2*(x[7*k+0]-self.r1[0])
+                grad[7*k+1] = 2*(x[7*k+1]-self.r1[1])
+            return grad
+        for k in range(self.N_hat):
             grad[7*k+0] = 2*(x[7*k+0]-self.r1[0])
             grad[7*k+1] = 2*(x[7*k+1]-self.r1[1])
+        for k in range(self.N_hat, self.Np):
+            grad[7*k+0] = 2*(x[7*k+0]-self.r2[0])
+            grad[7*k+1] = 2*(x[7*k+1]-self.r2[1])
         return grad
 
 
@@ -76,7 +92,6 @@ class nmpc_model():
         n_vars = 7*self.Np
 
         jacobian = np.zeros((n_constraints,n_vars)) #input,variable, init
-        # print(np.shape(jacobian))
         condition_index = 0
 
         # change in position constraint in x
@@ -133,3 +148,20 @@ class nmpc_model():
             condition_index += 1
         return jacobian
 
+    # def hessian(self,x,lam,factor):
+    #     # fist add hessian
+    #     d = [2, 2, 0, 0, 0, 0, 0]
+    #     H = factor * np.diag(d*self.Np)
+
+    #     #add matrices for constraints of type IV and V
+    #     for k in range(self.Np-1):
+    #         H4 = np.zeros((7*self.Np,7*self.Np)) #vx
+    #         H4[k*7+5,k*7+2] = H4[k*7+2,k*7+5] = 0.85*math.sin(x[k*7+2]) #d^2/da*dphi
+    #         H4[k*7+2,k*7+2] = 0.85*x[k*7+5]*math.cos(x[k*7+2]) #d^2/dphi^2
+    #         H += lam[3*(self.Np-1)+k]*H4
+
+    #         H5 = np.zeros((7*self.Np,7*self.Np)) #vy
+    #         H5[k*7+5,k*7+2] = H5[k*7+2,k*7+5] = -0.85*math.cos(x[k*7+2]) #d^2/da*dphi
+    #         H5[k*7+2,k*7+2] = 0.85*x[k*7+5]*math.sin(x[k*7+2]) #d^2/dphi^2
+    #         H += H + lam[4*(self.Np-1)+k]*H5
+    #     return H

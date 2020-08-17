@@ -59,9 +59,7 @@ while running:
 
     if not test:
         trust = np.clip(0,100, thrust)
-
-    print('r1: ', target_x, target_y)
-
+        
     pod.move(heading_x, heading_y, thrust, game)
     # render game
     screen.blit(background, (0, 0))
