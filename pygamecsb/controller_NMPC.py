@@ -22,6 +22,7 @@ class NMPC():
         self.Nvar = 7
         self.n_constraints = 5*(self.Np-1) + 5
 
+        self.checkpointindex = 1 # 0 is starting position
         self.test = test
         if self.test:
             # checkpoints
@@ -29,9 +30,7 @@ class NMPC():
             self.n_checkpoints = self.checkpoints.shape[0]
 
             self.phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
-        self.solutions = np.array([])
 
-        self.old_thrust = 0
 
         self.model = nmpc_model.nmpc_model()
         self.lb, self.ub, self.cl, self.cu = self.bounds_no_inits()
@@ -51,18 +50,14 @@ class NMPC():
         phi0 = phi
         # TODO: make sure there are no rounding issues
         if self.test:
-            checkpointindex = self.get_checkpoint_index(r1x, r1y)
-            r1 = self.checkpoints[checkpointindex,:]
-            # r2 = self.checkpoints[min(checkpointindex + 1, self.n_checkpoints-1),:]
+            self.checkpointindex = self.get_checkpoint_index(r1x, r1y)
+            r1 = self.checkpoints[self.checkpointindex,:]
+            r2 = self.checkpoints[min(self.checkpointindex + 1, self.n_checkpoints-1),:]
         else:
             r1 = np.array([r1x,r1y])
+            r2 = np.array([r1x,r1y]) # avoid passing by reference        
 
-        self.r0 = np.array([rx, ry])
-        self.v0 = np.array([vx, vy])        
-
-        ############ new x0, bounds as inital guess from old prediction 
-        # self.Np = min_steps(r0, v0, delta_angle, r1)
-        self.model.update_state(r1)
+        self.model.update_state(r1,r2)
         x0 = self.set_guess()
 
         cl, cu = self.bounds_inits(r0, phi0, v0)
@@ -184,51 +179,9 @@ class NMPC():
         cl[5*(self.Np-1)+4] = cu[5*(self.Np-1)+4] = v0[1]
         return cl, cu
 
-
-    def min_steps(self, r0, v0, deltaphi0, r1):
-        x = r0
-        v = v0
-
-        d0 = r1 - r0 # distance vector at start point
-        dist0 = np.linalg.norm(d0)
-        phi0 = math.acos((d0[0]) / dist0) #angle of target at start
-
-        #only need to get rid of vel in wrong direction
-        v = v0-np.dot(v0,d0/dist0)*(d0/dist0)
-
-        t_stop = 0
-        while np.linalg.norm(v) > 0:
-            t_stop += 1
-            x = x + v
-            v[0] = int(0.85*v[0])
-            v[1] = int(0.85*v[1])
-
-        x1 = x #x is now at stop position
-
-        #rotation time
-        d1 = r1 - x1 # distance vector at stop point
-        dist1 = np.linalg.norm(d1)
-        phi1 = math.acos((d1[0]) / dist1) #angle of target at stop
-
-        deltaphi1 = (deltaphi0 + (phi0-phi1))%np.pi
-        t_rot = math.ceil(10 * np.abs(deltaphi1) / math.pi) #rotation time at max. +/- pi/10 per tick
-
-        t_travel = 0 #should change condition to sign change maybe? or nondecreasing?
-        while np.abs(x[0]-r1[0]) >= 300 and np.abs(x[1]-r1[1]) >= 300:
-            t_travel += 1
-            x = x + v
-            v[0] = int(0.85*v[0] + 85*math.cos(-phi1))
-            v[1] = int(0.85*v[1] + 85*math.sin(-phi1))
-
-        print('t_rot,t_stop,t_travel: ', t_rot, t_stop, t_travel)
-        return min(max(t_stop, t_rot) + t_travel,8)
-
     def set_heading(self, w, phi0):
         dx = math.cos(phi0 + w)
         dy = -math.sin(phi0 + w)
-
-        print('heading: ',dx,dy)
-
         return dx,dy
 
     def set_guess(self):

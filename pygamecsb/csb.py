@@ -8,11 +8,11 @@ import controller_PID
 import controller_NMPC
 ########################################################################
 # enable TEST MODE here:
-test = False
-# test mode has no limits on thrust
+test = True
+# test mode has NO LIMIT ON THRUST
 # -> thrust can be negative
-# test mode assumes all checkpoints 
-# known and exported to file
+# test mode assumes ALL CHECKPOINTS KNOWN
+# -> exported to file
 ########################################################################
 
 pygame.init()
@@ -23,8 +23,8 @@ pygame.init()
 scale = 10
 renderSize = renderWidth, renderHeight = 1600, 900
 # gameSize = gameWidth, gameHeight = 800, 450
-n_checkpoints = 2
-np.random.seed(117)
+n_checkpoints = 4
+np.random.seed(152)
 
 screen = pygame.display.set_mode(renderSize)
 game = game.game(renderWidth, renderHeight, n_checkpoints, scale)
@@ -62,15 +62,13 @@ while running:
 
     print('r1: ', target_x, target_y)
 
-    # move pod
     pod.move(heading_x, heading_y, thrust, game)
     # render game
     screen.blit(background, (0, 0))
     for checkpoint in game.checkpoints:
         rect = game.checkpointRect(checkpoint)
         screen.blit(game.checkpointSurface, rect)
-    # rotate pod (reload to make it 0 first)
-    pod.surface = pygame.image.load("img/pod.png")
+    pod.surface = pygame.image.load("img/pod.png") 
     pod.surface = pygame.transform.rotate(pod.surface, -pod.theta*180/np.pi)
     screen.blit(pod.surface, pod.rect)
     pygame.display.flip()

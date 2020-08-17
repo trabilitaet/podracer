@@ -17,10 +17,8 @@ class game:
         self.checkpoints = np.zeros((self.n_checkpoints, 2))
 
         self.checkpointSurface = pygame.image.load("img/ckpt.png")
-        
-        # list of checkpoint rectangles
         self.checkpoints = self.genCheckpoints(n_checkpoints)
-        game.running = True
+        self.running = True
 
     def genCheckpoints(self, n):
         # checkpoints is array with coords of all checkpoints

@@ -16,11 +16,13 @@ import numdifftools as nda
 class nmpc_model():
     def __init__(self):
         self.r1 = np.zeros((2))
+        self.r2 = np.zeros((2))
         self.Np = 10
         self.n_constraints = 5*(self.Np-1)+5
 
-    def update_state(self, r1):
+    def update_state(self, r1, r2):
         self.r1 = r1
+        self.r2 = r2
         
 
     ##############################################################################################
@@ -28,7 +30,7 @@ class nmpc_model():
     # RETURN a single VALUE
     ##############################################################################################
     def objective(self, x):
-        return sum(pow((self.r1[0]-x[7*k+0]),2)+pow((self.r1[1]-x[7*k+1]),2) for k in range(self.Np-1))
+        return sum((x[7*k]-self.r1[0])**2+(x[7*k+1]-self.r1[1])**2 for k in range(self.Np))
 
 
     ##############################################################################################
@@ -70,11 +72,11 @@ class nmpc_model():
     ##############################################################################################
     def jacobian(self,x):
         Np = self.Np
-        n_constraints = 5*(Np-1)+5
-        n_vars = 7*Np
+        n_constraints = self.n_constraints
+        n_vars = 7*self.Np
 
         jacobian = np.zeros((n_constraints,n_vars)) #input,variable, init
-        print(np.shape(jacobian))
+        # print(np.shape(jacobian))
         condition_index = 0
 
         # change in position constraint in x
@@ -95,7 +97,7 @@ class nmpc_model():
             jacobian[condition_index,:] = tmp
             condition_index +=1
 
-        # change in angle constraints psi
+        # change in angle constraints
         for k in range(Np-1):
             tmp = np.zeros((n_vars))
             tmp[7*k+2] = -1 #phi,t
@@ -114,7 +116,6 @@ class nmpc_model():
             jacobian[condition_index,:] = tmp
             condition_index += 1
 
-        #TODO check signs for these
         for k in range(Np-1):
             tmp = np.zeros((n_vars))
             tmp[7*k+2] = -0.85*x[7*k+5]*math.cos(x[7*k+2]) #psi[t]
@@ -130,7 +131,5 @@ class nmpc_model():
             tmp[index] = 1
             jacobian[condition_index,:] = tmp
             condition_index += 1
-        
         return jacobian
-
 
