@@ -22,8 +22,7 @@ class nmpc_model():
 
     def update_state(self, r1, r2):
         self.r1 = r1
-        self.r2 = r2
-        
+        self.r2 = r2        
 
     ##############################################################################################
     # game OBJECTIVE function value at x

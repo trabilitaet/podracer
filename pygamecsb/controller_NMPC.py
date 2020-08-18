@@ -5,6 +5,8 @@ import nmpc_model
 from matplotlib import pyplot as plt
 import numdifftools as nda
 
+plot_results = True
+
 class NMPC():
     ########################################################################
     # INIT for NMPC controller
@@ -43,24 +45,24 @@ class NMPC():
     # called in every time step
     # given current game state, output desired thrust and heading
     ########################################################################
-    def calculate(self, rx, ry, phi, vx, vy, r1x, r1y, delta_angle):
+    def calculate(self, rx, ry, theta, vx, vy, r1x, r1y, delta_angle):
         self.tick += 1
-        r0 = np.array([rx,ry])
+        self.r0 = np.array([rx,ry])
         v0 = np.array([vx,vy])
-        phi0 = phi
+        theta0 = theta
         # TODO: make sure there are no rounding issues
         if self.test:
             self.checkpointindex = self.get_checkpoint_index(r1x, r1y)
-            r1 = self.checkpoints[self.checkpointindex,:]
-            r2 = self.checkpoints[min(self.checkpointindex + 1, self.n_checkpoints-1),:]
+            self.r1 = self.checkpoints[self.checkpointindex,:]
+            self.r2 = self.checkpoints[min(self.checkpointindex + 1, self.n_checkpoints-1),:]
         else:
-            r1 = np.array([r1x,r1y])
-            r2 = np.array([r1x,r1y]) # avoid passing by reference        
+            self.r1 = np.array([r1x,r1y])
+            self.r2 = np.array([r1x,r1y])
 
-        self.model.update_state(r1,r2)
+        self.model.update_state(self.r1,self.r2)
         x0 = self.set_guess()
 
-        cl, cu = self.bounds_inits(r0, phi0, v0)
+        cl, cu = self.bounds_inits(self.r0, theta0, v0)
 
         nlp = ipopt.problem(
             n=self.Nvar*self.Np,
@@ -76,30 +78,30 @@ class NMPC():
 
         #SOLVE nlp
         self.sol, info = nlp.solve(x0)
+        print('-----------------------OPT_DONE-------------------------')
         thrust = self.sol[5]
         w = self.sol[6]
 
-        heading_x, heading_y = self.set_heading(w,phi0)
-
-        print('-----------------------OPT_DONE-------------------------')
+        heading_x, heading_y = self.set_heading(w,theta0)
 
         sol = self.sol.reshape(-1,self.Nvar)
-        self.plot(sol, r0, r1, self.tick)
-        return thrust, r1x, r1y
+        if plot_results:
+            self.plot(sol, self.tick)
+        return thrust, heading_x, heading_y
+        # return thrust, r1x, r1y
 
 
     ########################################################################
     # UTILITY functions
     ########################################################################
-    def plot(self, sol, r0, r1, tick):
-
-        rx,ry,phi,vx,vy,a,w=sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
+    def plot(self,sol,tick):
+        rx,ry,theta,vx,vy,a,w=sol[:,0],sol[:,1],sol[:,2],sol[:,3],sol[:,4],sol[:,5],sol[:,6]
         plt.subplot(6,1,1)
         plt.xlabel('rx')
         plt.ylabel('ry')
         plt.plot(rx,self.gameheight-ry, 'ko-')
-        plt.plot(r0[0],self.gameheight-r0[1], 'go')
-        plt.plot(r1[0],self.gameheight-r1[1], 'bo')
+        plt.plot(self.r0[0],self.gameheight-self.r0[1], 'go')
+        plt.plot(self.r1[0],self.gameheight-self.r1[1], 'bo')
         plt.xlim(0,self.gamewidth)
         plt.ylim(0,self.gameheight)
 
@@ -114,8 +116,8 @@ class NMPC():
             index += 1
 
         plt.subplot(6,1,2)
-        plt.ylabel('phi')
-        plt.plot(phi, 'ko-')
+        plt.ylabel('theta')
+        plt.plot(theta, 'ko-')
 
         plt.subplot(6,1,3)
         plt.ylabel('vx')
@@ -147,7 +149,8 @@ class NMPC():
         x_max = self.gameheight*10
         y_min = -self.gamewidth/2
         y_max = self.gamewidth*10
-        phi_lim = 2*math.pi
+        theta_min = -32*math.pi # allow for complete rotations...
+        theta_max = 32*math.pi
         v_lim = 10000 #actual max velocity is 561 in x and y
         #a_min = -100 if test else 0
         a_min = 0
@@ -159,8 +162,8 @@ class NMPC():
         lb = np.zeros((self.Np,self.Nvar))
         ub = np.zeros((self.Np,self.Nvar))
         for k in range(self.Np):
-            lb[k,:] = np.array([x_min, y_min, -phi_lim, -v_lim, -v_lim, a_min, -w_lim])
-            ub[k,:] = np.array([x_max, y_max, phi_lim, v_lim, v_lim, a_max, w_lim])
+            lb[k,:] = np.array([x_min, y_min, theta_min, -v_lim, -v_lim, a_min, -w_lim])
+            ub[k,:] = np.array([x_max, y_max, theta_max, v_lim, v_lim, a_max, w_lim])
         lb = lb.reshape(self.Nvar*self.Np,1)
         ub = ub.reshape(self.Nvar*self.Np,1)
 
@@ -169,20 +172,21 @@ class NMPC():
         cu = np.zeros((self.n_constraints))
         return lb, ub, cl, cu
 
-    def bounds_inits(self, r0, phi0, v0):
+    def bounds_inits(self, r0, theta0, v0):
         cl = self.cl
         cu = self.cl
         cl[5*(self.Np-1)] = cu[5*(self.Np-1)] =r0[0]
         cl[5*(self.Np-1)+1] = cu[5*(self.Np-1)+1] = r0[1]
-        cl[5*(self.Np-1)+2] = cu[5*(self.Np-1)+2] = phi0
+        cl[5*(self.Np-1)+2] = cu[5*(self.Np-1)+2] = theta0
         cl[5*(self.Np-1)+3] = cu[5*(self.Np-1)+3] = v0[0]
         cl[5*(self.Np-1)+4] = cu[5*(self.Np-1)+4] = v0[1]
         return cl, cu
 
+
     def set_heading(self, w, phi0):
-        dx = math.cos(phi0 + w)
-        dy = -math.sin(phi0 + w)
-        return dx,dy
+        dx = 10*math.cos(phi0 + w)
+        dy = 10*math.sin(phi0 + w)
+        return self.r0[0]+dx,self.r0[1]+dy
 
     def set_guess(self):
         x0 = np.zeros((self.Nvar*self.Np))
