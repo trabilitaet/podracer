@@ -9,10 +9,10 @@ class game:
     def __init__(self, width, height, n_checkpoints, scale):
         self.checkpointindex = 0
         self.scale = scale
-        self.gameWidth = width*self.scale
-        self.gameHeight = height*self.scale
+        self.gamewidth = width*self.scale
+        self.gameheight = height*self.scale
         self.n_checkpoints = n_checkpoints
-        self.checkpointradius = int(self.gameHeight/(2*self.scale))
+        self.checkpointradius = int(self.gameheight/(2*self.scale))
         print('checkpointradius: ', self.checkpointradius)
         self.checkpoints = np.zeros((self.n_checkpoints, 2))
 
@@ -27,8 +27,8 @@ class game:
             while True:
                 tooclose = False
                 # sample five checkpoints with a minimum distance between them
-                ckpt = np.array([np.random.randint(0, 0.9 * self.gameWidth),
-                                 np.random.randint(0, 0.9 * self.gameHeight)])
+                ckpt = np.array([np.random.randint(0, 0.9 * self.gamewidth),
+                                 np.random.randint(0, 0.9 * self.gameheight)])
                 for i in range(index):
                     if distance.euclidean(ckpt, self.checkpoints[i - 1, :]) <= 450*self.scale:
                         tooclose = True

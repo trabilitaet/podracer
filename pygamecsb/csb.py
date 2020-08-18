@@ -3,7 +3,6 @@ import pod
 import game
 import numpy as np
 import controller_A
-#import controller_A
 import controller_PID
 import controller_NMPC
 ########################################################################

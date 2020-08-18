@@ -3,7 +3,7 @@ import math
 import ipopt
 import nmpc_model
 from matplotlib import pyplot as plt
-import numdifftools as nda
+from scipy.spatial import distance
 
 plot_results = True
 
@@ -19,6 +19,7 @@ class NMPC():
 
         self.gamewidth = scale*render_size[0]
         self.gameheight = scale*render_size[1]
+        self.checkpointradius = int(self.gameheight/(2*scale))
 
         self.Np = 10
         self.Nvar = 7
@@ -34,7 +35,7 @@ class NMPC():
             self.phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
 
 
-        self.model = nmpc_model.nmpc_model()
+        self.model = nmpc_model.nmpc_model(self.Np)
         self.lb, self.ub, self.cl, self.cu = self.bounds_no_inits()
         self.sol = np.zeros((self.Nvar*self.Np))
         self.tick = 0
@@ -80,16 +81,13 @@ class NMPC():
         self.sol, info = nlp.solve(x0)
         print('-----------------------OPT_DONE-------------------------')
         thrust = self.sol[5]
-        w = self.sol[6]
-
-        heading_x, heading_y = self.set_heading(w,theta0)
+        heading_x, heading_y = self.set_heading(self.sol[6],theta0)
 
         sol = self.sol.reshape(-1,self.Nvar)
+        self.adjust_N_hat(sol)
         if plot_results:
             self.plot(sol, self.tick)
         return thrust, heading_x, heading_y
-        # return thrust, r1x, r1y
-
 
     ########################################################################
     # UTILITY functions
@@ -192,6 +190,18 @@ class NMPC():
         x0 = np.zeros((self.Nvar*self.Np))
         x0[:self.Nvar*(self.Np-1)] = self.sol[self.Nvar:] #remove step already taken
         return x0
+
+    def adjust_N_hat(self,sol):
+        rx,ry = sol[:,0],sol[:,1]
+
+        for index in range(self.Np):
+            r = np.array([rx[index], ry[index]])
+
+            if distance.euclidean(r, self.r1) <= self.checkpointradius:
+                self.model.set_N_hat(index)
+            else: # goal not reached in current prediction
+                self.model.set_N_hat(self.Np)
+        return
 
     def get_name(self):
         return 'NMPC'

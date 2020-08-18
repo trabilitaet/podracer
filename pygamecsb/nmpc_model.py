@@ -2,7 +2,7 @@ import numpy as np
 import math
 import ipopt
 from matplotlib import pyplot as plt
-import numdifftools as nda
+from scipy.spatial import distance
 
 ################################################################
 # DEFINITIONS
@@ -14,23 +14,37 @@ import numdifftools as nda
 ################################################################
 
 class nmpc_model():
-    def __init__(self):
+    def __init__(self, Np):
         self.r1 = np.zeros((2))
         self.r2 = np.zeros((2))
-        self.Np = 10
+        self.Np = Np
+        self.N_hat = Np
         self.n_constraints = 5*(self.Np-1)+5
 
     def update_state(self, r1, r2):
         self.r1 = r1
-        self.r2 = r2        
+        self.r2 = r2
+
+    def set_N_hat(self, N_hat):
+        if N_hat == 0: # goal reached in current step
+            self.N_hat = self.Np
+        elif N_hat <= 2:
+            self.N_hat = 2
+        else:
+            self.N_hat = N_hat
+        return   
 
     ##############################################################################################
     # game OBJECTIVE function value at x
     # RETURN a single VALUE
     ##############################################################################################
     def objective(self, x):
-        return sum((x[7*k]-self.r1[0])**2+(x[7*k+1]-self.r1[1])**2 for k in range(self.Np))
-
+        if self.N_hat == self.Np or distance.euclidean(self.r1,self.r2) == 0:
+            return sum((x[7*k]-self.r1[0])**2+(x[7*k+1]-self.r1[1])**2 for k in range(self.Np))
+        else:
+            obj = sum((x[7*k]-self.r1[0])**2+(x[7*k+1]-self.r1[1])**2 for k in range(self.N_hat))
+            obj += sum((x[7*k]-self.r2[0])**2+(x[7*k+1]-self.r2[1])**2 for k in range(self.N_hat, self.Np))
+            return obj
 
     ##############################################################################################
     # game dynamics expressed as CONSTRAINTS
@@ -56,10 +70,19 @@ class nmpc_model():
     ##############################################################################################
     def gradient(self,x):
         grad = np.zeros((7*self.Np))
-        for k in range(self.Np):
-            grad[7*k+0] = 2*(x[7*k+0]-self.r1[0])
-            grad[7*k+1] = 2*(x[7*k+1]-self.r1[1])
-        return grad
+        if self.N_hat == self.Np or distance.euclidean(self.r1,self.r2) == 0:
+            for k in range(self.Np):
+                grad[7*k+0] = 2*(x[7*k+0]-self.r1[0])
+                grad[7*k+1] = 2*(x[7*k+1]-self.r1[1])
+            return grad
+        else:
+            for k in range(self.N_hat):
+                grad[7*k+0] = 2*(x[7*k+0]-self.r1[0])
+                grad[7*k+1] = 2*(x[7*k+1]-self.r1[1])
+            for k in range(self.N_hat, self.Np):
+                grad[7*k+0] = 2*(x[7*k+0]-self.r2[0])
+                grad[7*k+1] = 2*(x[7*k+1]-self.r2[1])
+            return grad 
 
 
     ##############################################################################################
@@ -75,7 +98,6 @@ class nmpc_model():
         n_vars = 7*self.Np
 
         jacobian = np.zeros((n_constraints,n_vars)) #input,variable, init
-        # print(np.shape(jacobian))
         condition_index = 0
 
         # change in position constraint in x
