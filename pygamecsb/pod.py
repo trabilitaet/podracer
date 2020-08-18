@@ -110,7 +110,7 @@ class csbpod():
             self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))
             self.checkpointindex = game.checkpointindex + 1
             game.checkpointindex = self.checkpointindex
-            if game.checkpointindex == game.n_checkpoints:
+            if game.checkpointindex == game.n_checkpoints - 1:
                 game.running = False
 
     def getState(self, game):
