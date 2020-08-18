@@ -15,8 +15,6 @@ class NMPC():
     ########################################################################
     def __init__(self, test, x0, y0, delta_angle_0, render_size, scale):
         self.r0 = np.array([x0,y0])
-        self.r1 = np.array([x0,y0])
-        self.r2 = np.array([x0,y0])
         self.v0 = np.zeros((2))
 
         self.gamewidth = scale*render_size[0]
@@ -27,7 +25,6 @@ class NMPC():
         self.n_constraints = 5*(self.Np-1) + 5
 
         self.checkpointindex = 1 # 0 is starting position
-        self.checkpointradius = int(self.gameheight/(2*scale))
         self.test = test
         if self.test:
             # checkpoints
@@ -89,7 +86,7 @@ class NMPC():
         print('-----------------------OPT_DONE-------------------------')
 
         sol = self.sol.reshape(-1,self.Nvar)
-        self.check_objective(sol)
+        self.plot(sol, r0, r1, self.tick)
         if plot_results:
             self.plot(sol, r0, r1, self.tick)
         return thrust, r1x, r1y
@@ -153,7 +150,7 @@ class NMPC():
         x_max = self.gameheight*10
         y_min = -self.gamewidth/2
         y_max = self.gamewidth*10
-        phi_lim = 6*math.pi
+        phi_lim = 2*math.pi
         v_lim = 10000 #actual max velocity is 561 in x and y
         #a_min = -100 if test else 0
         a_min = 0
@@ -194,23 +191,6 @@ class NMPC():
         x0 = np.zeros((self.Nvar*self.Np))
         x0[:self.Nvar*(self.Np-1)] = self.sol[self.Nvar:] #remove step already taken
         return x0
-
-    def check_objective(self, sol):
-        # check if checkpoint can be reached in current horizon
-        if np.linalg.norm(self.r1-self.r2) >= 0: #next checkpoint unknown
-            return
-
-        rx, ry = sol[:,0], sol[:,1]
-        index = 0
-        for k in range(self.Np):
-            index += 1
-            dist = np.linalg.norm(np.array([rx,ry]),self.r1)
-            if dist <= self.checkpointradius:
-                if index == 0:
-                    self.model.set_N_hat(self.Np)
-                else:
-                    self.model.set_N_hat(index)
-        return
 
     def get_name(self):
         return 'NMPC'
