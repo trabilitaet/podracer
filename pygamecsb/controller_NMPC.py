@@ -197,7 +197,7 @@ class NMPC():
         for index in range(self.Np):
             r = np.array([rx[index], ry[index]])
 
-            if distance.euclidean(r, self.r1) <= self.checkpointradius:
+            if distance.euclidean(r, self.r1) <= self.checkpointradius/2:
                 self.model.set_N_hat(index)
             else: # goal not reached in current prediction
                 self.model.set_N_hat(self.Np)

@@ -22,8 +22,9 @@ pygame.init()
 scale = 10
 renderSize = renderWidth, renderHeight = 1600, 900
 # gameSize = gameWidth, gameHeight = 800, 450
-n_checkpoints = 4
-np.random.seed(152)
+n_checkpoints = 5
+# np.random.seed(1518)
+np.random.seed(518)
 
 screen = pygame.display.set_mode(renderSize)
 game = game.game(renderWidth, renderHeight, n_checkpoints, scale)

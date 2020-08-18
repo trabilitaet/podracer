@@ -27,8 +27,8 @@ class game:
             while True:
                 tooclose = False
                 # sample five checkpoints with a minimum distance between them
-                ckpt = np.array([np.random.randint(0, 0.9 * self.gamewidth),
-                                 np.random.randint(0, 0.9 * self.gameheight)])
+                ckpt = np.array([np.random.randint(0, 0.85 * self.gamewidth),
+                                 np.random.randint(0, 0.85 * self.gameheight)])
                 for i in range(index):
                     if distance.euclidean(ckpt, self.checkpoints[i - 1, :]) <= 450*self.scale:
                         tooclose = True
