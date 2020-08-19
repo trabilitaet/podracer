@@ -32,7 +32,7 @@ class nmpc_model():
             self.N_hat = 2
         else:
             self.N_hat = N_hat
-        return   
+        return
 
     ##############################################################################################
     # game OBJECTIVE function value at x
@@ -59,7 +59,6 @@ class nmpc_model():
             constraints[2*(self.Np-1)+k] = x[7*(k+1)+2] - x[7*k+2] - x[7*k+6]
             constraints[3*(self.Np-1)+k] = x[7*(k+1)+3] - 0.85*x[7*k+3] - 0.85*x[7*k+5]*math.cos(x[7*k+2])
             constraints[4*(self.Np-1)+k] = x[7*(k+1)+4] - 0.85*x[7*k+4] - 0.85*x[7*k+5]*math.sin(x[7*k+2])
-        
         for j in range(5):
             constraints[5*(self.Np-1)+j] = x[j]
         return constraints
@@ -82,7 +81,7 @@ class nmpc_model():
             for k in range(self.N_hat, self.Np):
                 grad[7*k+0] = 2*(x[7*k+0]-self.r2[0])
                 grad[7*k+1] = 2*(x[7*k+1]-self.r2[1])
-            return grad 
+            return grad
 
 
     ##############################################################################################

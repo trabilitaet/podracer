@@ -19,9 +19,8 @@ pygame.init()
 ########################################################################
 # set GAME PARAMETERS here
 ########################################################################
-scale = 10
+scale = 10 # game size = renderSize*scale
 renderSize = renderWidth, renderHeight = 1600, 900
-# gameSize = gameWidth, gameHeight = 800, 450
 n_checkpoints = 5
 # np.random.seed(1518)
 np.random.seed(518)
@@ -41,8 +40,8 @@ target_x,target_y,x,y,theta,vx,vy,delta_angle,running=pod.getState(game)
 ########################################################################
 # initialize CONTROLLER
 #control = controller_A.controller_A()
-#control = controller_PID.PID()
-control = controller_NMPC.NMPC(test, x, y, delta_angle, renderSize, scale)
+control = controller_PID.PID()
+# control = controller_NMPC.NMPC(test, x, y, delta_angle, renderSize, scale)
 ########################################################################
 
 tick = 0
@@ -68,7 +67,7 @@ while running:
     for checkpoint in game.checkpoints:
         rect = game.checkpointRect(checkpoint)
         screen.blit(game.checkpointSurface, rect)
-    pod.surface = pygame.image.load("img/pod.png") 
+    pod.surface = pygame.image.load("img/pod.png")
     pod.surface = pygame.transform.rotate(pod.surface, -pod.theta*180/np.pi)
     screen.blit(pod.surface, pod.rect)
     pygame.display.flip()

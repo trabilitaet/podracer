@@ -34,13 +34,11 @@ class NMPC():
 
             self.phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
 
-
         self.model = nmpc_model.nmpc_model(self.Np)
         self.lb, self.ub, self.cl, self.cu = self.bounds_no_inits()
         self.sol = np.zeros((self.Nvar*self.Np))
         self.tick = 0
 
-        
     ########################################################################
     # MAIN interface to csb.py
     # called in every time step
@@ -143,7 +141,7 @@ class NMPC():
         return -1
 
     def bounds_no_inits(self):
-        x_min = -self.gamewidth/2 
+        x_min = -self.gamewidth/2
         x_max = self.gameheight*10
         y_min = -self.gamewidth/2
         y_max = self.gamewidth*10
@@ -179,7 +177,6 @@ class NMPC():
         cl[5*(self.Np-1)+3] = cu[5*(self.Np-1)+3] = v0[0]
         cl[5*(self.Np-1)+4] = cu[5*(self.Np-1)+4] = v0[1]
         return cl, cu
-
 
     def set_heading(self, w, phi0):
         dx = 10*math.cos(phi0 + w)
