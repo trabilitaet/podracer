@@ -13,7 +13,6 @@ class game:
         self.gameheight = height*self.scale
         self.n_checkpoints = n_checkpoints
         self.checkpointradius = int(self.gameheight/(2*self.scale))
-        print('checkpointradius: ', self.checkpointradius)
         self.checkpoints = np.zeros((self.n_checkpoints, 2))
 
         self.checkpointSurface = pygame.image.load("img/ckpt.png")

@@ -30,11 +30,11 @@ class PID():
         dist = np.linalg.norm(np.array([x,y])-np.array([next_checkpoint_x,next_checkpoint_y]))
         self.old_los_error = self.los_error
         self.los_error = math.cos(next_checkpoint_angle)*dist
-        self.log('error: ' + self.los_error)
+        self.log('error: ' + str(self.los_error))
         self.cum_los_error += self.los_error * self.time
-        self.log('cum_error: ' + self.cum_los_error)
+        self.log('cum_error: ' + str(self.cum_los_error))
         self.rate_los_error = (self.los_error - self.old_los_error) / self.time
-        self.log('rate_error: ' + self.rate_los_error)
+        self.log('rate_error: ' + str(self.rate_los_error))
 
         pid = self.Kp * self.los_error + self.Ki * self.cum_los_error + self.Kd * self.rate_los_error
         thrust = int(pid)
