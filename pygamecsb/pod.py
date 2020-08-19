@@ -29,7 +29,7 @@ class csbpod():
         self.surface = pygame.image.load("img/pod.png")
         self.rect = self.surface.get_rect()
         #start position and centering
-        self.rect.x = self.x - 64 
+        self.rect.x = self.x - 64
         self.rect.y = self.y - 64
 
     def getAngle(self, target):
@@ -96,7 +96,7 @@ class csbpod():
 
 
     def check_for_collision(self, game):
-        print('checking for collision--------------------------------------------------')
+        self.log('checking for collision--------------------------------------------------')
         coordinates = np.array([self.x, self.y])
         checkpoint = game.checkpoints[self.checkpointindex]
         dist = distance.euclidean(coordinates, checkpoint)
@@ -104,7 +104,6 @@ class csbpod():
         # TODO: detect collision inbetween steps
         if dist < game.checkpointradius:
             self.running = not (self.checkpointindex == (game.n_checkpoints - 1))
-            print('checkpoint collision----------------------------------------------')
             self.log('checkpoint collision----------------------------------------------')
             self.log('target, coords, distance = ' + str(checkpoint) + ' ' +  str(coordinates) + ' ' + str(dist))
             self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))

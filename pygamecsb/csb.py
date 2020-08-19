@@ -23,7 +23,8 @@ scale = 10 # game size = renderSize*scale
 renderSize = renderWidth, renderHeight = 1600, 900
 n_checkpoints = 5
 # np.random.seed(1518)
-np.random.seed(518)
+seed = 518
+np.random.seed(seed)
 
 screen = pygame.display.set_mode(renderSize)
 game = game.game(renderWidth, renderHeight, n_checkpoints, scale)
@@ -47,7 +48,6 @@ control = controller_PID.PID()
 tick = 0
 while running:
     tick +=1
-    print('tick: ', tick)
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
 
@@ -58,8 +58,6 @@ while running:
 
     if not test:
         trust = np.clip(0,100, thrust)
-
-    print('r1: ', target_x, target_y)
 
     pod.move(heading_x, heading_y, thrust, game)
     # render game
@@ -73,7 +71,10 @@ while running:
     pygame.display.flip()
 
 filename = 'score' + control.get_name()
-logfile = open(filename, 'w')
+logfile = open(filename, 'a')
+logfile.writelines('controller ' + control.get_name() + ':\n')
 logfile.writelines('reached target in ' + str(tick) + ' ticks' + '\n')
+logfile.writelines('n_checkpoints: ' + str(n_checkpoints) + '\n')
+logfile.writelines('random seed: ' + str(seed) + '\n')
 logfile.close()
 pygame.quit()

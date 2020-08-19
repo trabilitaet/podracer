@@ -30,23 +30,22 @@ class PID():
         dist = np.linalg.norm(np.array([x,y])-np.array([next_checkpoint_x,next_checkpoint_y]))
         self.old_los_error = self.los_error
         self.los_error = math.cos(next_checkpoint_angle)*dist
-        self.log(self.los_error)
+        self.log('error: ' + self.los_error)
         self.cum_los_error += self.los_error * self.time
-        self.log(self.cum_los_error)
+        self.log('cum_error: ' + self.cum_los_error)
         self.rate_los_error = (self.los_error - self.old_los_error) / self.time
-        self.log(self.rate_los_error)
+        self.log('rate_error: ' + self.rate_los_error)
 
         pid = self.Kp * self.los_error + self.Ki * self.cum_los_error + self.Kd * self.rate_los_error
         thrust = int(pid)
         thrust = np.clip(thrust,0, 100)
 
-        print("thrust: " + str(thrust))
-        print("dist: ", )
+        self.log("thrust at " + str(self.time) + ": " + str(thrust))
         return thrust, next_checkpoint_x, next_checkpoint_y
 
     def log(self, message):
-        filename = 'self.log_' + self.get_name()
-        self.logfile =  open(filename, 'w')
+        filename = 'log_' + self.get_name()
+        self.logfile = open(filename, 'a')
         self.logfile.writelines(str(message) + '\n')
         self.logfile.close()
 
