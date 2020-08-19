@@ -186,6 +186,7 @@ class NMPC():
     def set_guess(self):
         x0 = np.zeros((self.Nvar*self.Np))
         x0[:self.Nvar*(self.Np-1)] = self.sol[self.Nvar:] #remove step already taken
+        x0[self.Nvar*(self.Np-1):] = self.sol[-self.Nvar:] #remove step already taken
         return x0
 
     def adjust_N_hat(self,sol):
