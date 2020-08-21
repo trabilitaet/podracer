@@ -18,6 +18,10 @@ test = True
 pygame.init()
 
 ########################################################################
+# turn RENDERING on/off here
+########################################################################
+render = False
+########################################################################
 # set GAME PARAMETERS here
 ########################################################################
 scale = 10 # game size = renderSize*scale
@@ -30,13 +34,14 @@ seed = 1518
 # seed = 2218
 np.random.seed(seed)
 
-screen = pygame.display.set_mode(renderSize)
 game = game.game(renderWidth, renderHeight, n_checkpoints, scale)
 pod = pod.csbpod(scale, game.checkpoints[0,:])
-background = pygame.image.load("img/back.png")
-background = pygame.transform.scale(background, (renderWidth, renderHeight))
-running = True
 trajectory = np.array([])
+if render:
+    screen = pygame.display.set_mode(renderSize)
+    background = pygame.image.load("img/back.png")
+    background = pygame.transform.scale(background, (renderWidth, renderHeight))
+running = True
 
 ########################################################################
 # get INITIAL CONDITIONS
@@ -66,16 +71,18 @@ while running:
         trust = np.clip(0,100, thrust)
 
     pod.move(heading_x, heading_y, thrust, game)
-    # render game
-    screen.blit(background, (0, 0))
-    for checkpoint in game.checkpoints:
-        rect = game.checkpointRect(checkpoint)
-        screen.blit(game.checkpointSurface, rect)
-    pod.surface = pygame.image.load("img/pod.png")
-    pod.surface = pygame.transform.rotate(pod.surface, -pod.theta*180/np.pi)
-    screen.blit(pod.surface, pod.rect)
-    pygame.display.flip()
 
+    if render:
+        screen.blit(background, (0, 0))
+        for checkpoint in game.checkpoints:
+            rect = game.checkpointRect(checkpoint)
+            screen.blit(game.checkpointSurface, rect)
+        pod.surface = pygame.image.load("img/pod.png")
+        pod.surface = pygame.transform.rotate(pod.surface, -pod.theta*180/np.pi)
+        screen.blit(pod.surface, pod.rect)
+        pygame.display.flip()
+
+#plot and log
 trajectory = trajectory.reshape(-1,2)
 plt.plot(trajectory[:,0],trajectory[:,1], 'ko-')
 plt.plot(game.checkpoints[:-1,0],game.checkpoints[:-1,1], 'go')
