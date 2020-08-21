@@ -126,7 +126,7 @@ class csbpod():
             return checkpoint[0], checkpoint[1], self.x, self.y, self.theta, self.vx, self.vy, delta_angle, game.running
 
     def log(self, message):
-        filename = 'controller' + '.log'
+        filename = 'pod'  '.log'
         logfile =  open(filename, 'w')
         logfile.writelines(message + '\n')
         logfile.close()

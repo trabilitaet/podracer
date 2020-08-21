@@ -2,6 +2,7 @@ import sys, pygame
 import pod
 import game
 import numpy as np
+from matplotlib import pyplot as plt
 import controller_A
 import controller_PID
 import controller_NMPC
@@ -22,8 +23,11 @@ pygame.init()
 scale = 10 # game size = renderSize*scale
 renderSize = renderWidth, renderHeight = 1600, 900
 n_checkpoints = 5
-# np.random.seed(1518)
-seed = 518
+# seed = 518
+seed = 1518
+# seed = 2367
+# seed = 899
+# seed = 2218
 np.random.seed(seed)
 
 screen = pygame.display.set_mode(renderSize)
@@ -32,6 +36,7 @@ pod = pod.csbpod(scale, game.checkpoints[0,:])
 background = pygame.image.load("img/back.png")
 background = pygame.transform.scale(background, (renderWidth, renderHeight))
 running = True
+trajectory = np.array([])
 
 ########################################################################
 # get INITIAL CONDITIONS
@@ -50,6 +55,7 @@ while running:
     tick +=1
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
+    trajectory = np.append(trajectory,np.array([x,y]))
 
     target_x, target_y, x, y, theta, vx, vy, delta_angle, running = pod.getState(game)
 
@@ -70,7 +76,11 @@ while running:
     screen.blit(pod.surface, pod.rect)
     pygame.display.flip()
 
-filename = 'score' + control.get_name()
+trajectory = trajectory.reshape(-1,2)
+plt.plot(trajectory[:,0],trajectory[:,1], 'ko-')
+plt.plot(game.checkpoints[:-1,0],game.checkpoints[:-1,1], 'go')
+plt.savefig('trajectory_' + control.get_name())
+filename = 'score_' + control.get_name()
 logfile = open(filename, 'a')
 logfile.writelines('controller ' + control.get_name() + ':\n')
 logfile.writelines('reached target in ' + str(tick) + ' ticks' + '\n')
