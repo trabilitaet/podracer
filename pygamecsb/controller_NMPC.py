@@ -77,7 +77,6 @@ class NMPC():
 
         #SOLVE nlp
         self.sol, info = nlp.solve(x0)
-        print('-----------------------OPT_DONE-------------------------')
         thrust = self.sol[5]
         heading_x, heading_y = self.set_heading(self.sol[6],theta0)
 
