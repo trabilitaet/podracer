@@ -153,3 +153,20 @@ class nmpc_model():
             condition_index += 1
         return jacobian
 
+    # def hessian(self, x, lam, factor):
+    #     #first add hessian of objective
+    #     d = [2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    #     H = (factor * np.diag(d*self.Np))
+
+    #     for k in range(self.Np-1):
+    #         H4 = np.zeros((7*self.Np,7*self.Np)) #vx
+    #         H4[k*7+5,k*7+2] = 0.85*math.sin(x[k*7+2]) #d^2/da*dphi
+    #         H4[k*7+2,k*7+2] = 0.85*x[k*7+5]*math.cos(x[k*7+2]) #d^2/dphi^2
+    #         H += lam[3*(self.Np-1)+k]*H4
+
+    #         H5 = np.zeros((7*self.Np,7*self.Np)) #vy
+    #         H5[k*7+5,k*7+2] = -0.85*math.cos(x[k*7+2]) #d^2/da*dphi
+    #         H5[k*7+2,k*7+2] = 0.85*x[k*7+5]*math.sin(x[k*7+2]) #d^2/dphi^2
+    #         H += lam[4*(self.Np-1)+k]*H5
+    #     return H
+

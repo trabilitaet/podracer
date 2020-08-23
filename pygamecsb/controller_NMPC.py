@@ -73,7 +73,10 @@ class NMPC():
             cu=cu
         )
 
-        nlp.addOption('max_iter', 500)
+        nlp.addOption('max_iter', 20)
+        nlp.addOption('tol', 1e-2)
+        nlp.addOption('constr_viol_tol', 1e-2)
+        nlp.addOption('print_level', 2)
 
         #SOLVE nlp
         self.sol, info = nlp.solve(x0)
@@ -130,7 +133,7 @@ class NMPC():
         plt.ylabel('w')
         plt.plot(w, 'ko-')
 
-        plt.savefig('run/fig_' + str(tick) + '.png')
+        # plt.savefig('fig_' + str(tick) + '.png')
         plt.clf()
 
     def get_checkpoint_index(self, checkpoint_x, checkpoint_y):
