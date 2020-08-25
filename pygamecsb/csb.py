@@ -25,7 +25,7 @@ render = False
 ########################################################################
 scale = 10 # game size = renderSize*scale
 renderSize = renderWidth, renderHeight = 1600, 900
-n_checkpoints = 5
+n_checkpoints = 4
 seed = int(sys.argv[1])
 np.random.seed(seed)
 
@@ -76,6 +76,7 @@ while running:
         screen.blit(pod.surface, pod.rect)
         pygame.display.flip()
     trajectory = np.append(trajectory,np.array([x,y,thrust,theta]))
+trajectory = np.append(trajectory,np.array([x,y,thrust,theta]))
 
 # np.save('tmp/'+control.get_name()+'_'+str(seed), trajectory)
 # np.save('tmp/checkpoints_' + str(seed), game.checkpoints)
