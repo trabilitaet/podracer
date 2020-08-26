@@ -19,13 +19,13 @@ pygame.init()
 ########################################################################
 # turn RENDERING on/off here
 ########################################################################
-render = False
+render = True
 ########################################################################
 # set GAME PARAMETERS here
 ########################################################################
 scale = 10 # game size = renderSize*scale
 renderSize = renderWidth, renderHeight = 1600, 900
-n_checkpoints = 4
+n_checkpoints = 5
 seed = int(sys.argv[1])
 np.random.seed(seed)
 
@@ -76,16 +76,19 @@ while running:
         screen.blit(pod.surface, pod.rect)
         pygame.display.flip()
     trajectory = np.append(trajectory,np.array([x,y,thrust,theta]))
+    if tick >= 100:
+        break
+target_x, target_y, x, y, theta, vx, vy, delta_angle, running = pod.getState(game)
 trajectory = np.append(trajectory,np.array([x,y,thrust,theta]))
 
-# np.save('tmp/'+control.get_name()+'_'+str(seed), trajectory)
-# np.save('tmp/checkpoints_' + str(seed), game.checkpoints)
-filename = 'tmp/score_'+control.get_name()+'_'+str(seed)
-logfile = open(filename, 'a')
+np.save('tmp/'+control.get_name()+'_'+str(seed), trajectory)
+np.save('tmp/checkpoints_' + str(seed), game.checkpoints)
+# filename = 'tmp/score_'+control.get_name()+'_'+str(seed)
+# logfile = open(filename, 'a')
 # logfile.writelines('controller ' + control.get_name() + ':\n')
 # logfile.writelines('reached target in ' + str(tick) + ' ticks' + '\n')
-logfile.writelines(str(tick) + '\n')
+# logfile.writelines(str(tick) + '\n')
 # logfile.writelines('n_checkpoints: ' + str(n_checkpoints-1) + '\n')
 # logfile.writelines('random seed: ' + str(seed) + '\n')
-logfile.close()
+# logfile.close()
 pygame.quit()

@@ -1,6 +1,6 @@
 import numpy as np
 import os
-n_sims = 362
+n_sims = 10
 
 for i in range(n_sims):
 	seed = np.random.randint(0, 99999)

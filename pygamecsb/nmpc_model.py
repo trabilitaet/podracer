@@ -28,8 +28,8 @@ class nmpc_model():
     def set_N_hat(self, N_hat):
         if N_hat == 0: # goal reached in current step
             self.N_hat = self.Np
-        elif N_hat <= 2:
-            self.N_hat = 2
+        elif N_hat <= 1:
+            self.N_hat = 1
         else:
             self.N_hat = N_hat
         return

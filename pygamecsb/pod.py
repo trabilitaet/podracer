@@ -114,16 +114,16 @@ class csbpod():
 
     def getState(self, game):
         # check for collision
-        if not game.running:
-            return  0, 0, 0, 0, 0, 0, 0, 0, game.running
-        else:
-            coordinates = np.array([self.x, self.y])
-            checkpoint = game.checkpoints[self.checkpointindex]
-            dist = distance.euclidean(coordinates, checkpoint)
+        # if not game.running:
+        #     return  0, 0, 0, 0, 0, 0, 0, 0, game.running
+        # else:
+        coordinates = np.array([self.x, self.y])
+        checkpoint = game.checkpoints[self.checkpointindex]
+        dist = distance.euclidean(coordinates, checkpoint)
 
-            # get angle between current heading theta and the next checkpoint
-            delta_angle = self.getDeltaAngle(np.array([checkpoint[0], checkpoint[1]]))
-            return checkpoint[0], checkpoint[1], self.x, self.y, self.theta, self.vx, self.vy, delta_angle, game.running
+        # get angle between current heading theta and the next checkpoint
+        delta_angle = self.getDeltaAngle(np.array([checkpoint[0], checkpoint[1]]))
+        return checkpoint[0], checkpoint[1], self.x, self.y, self.theta, self.vx, self.vy, delta_angle, game.running
 
     def log(self, message):
         filename = 'pod'  '.log'
