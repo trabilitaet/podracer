@@ -7,7 +7,6 @@ import pod
 class game:
     # Global game parameters
     def __init__(self, width, height, n_checkpoints, scale):
-        self.checkpointindex = 0
         self.scale = scale
         self.gamewidth = width*self.scale
         self.gameheight = height*self.scale

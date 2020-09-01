@@ -13,7 +13,7 @@ class NMPC():
     # called once before the start of the game
     # given current game state, output desired thrust and heading
     ########################################################################
-    def __init__(self, test, x0, y0, delta_angle_0, render_size, scale):
+    def __init__(self, test, x0, y0, theta0, render_size, scale):
         self.r0 = np.array([x0,y0])
         self.v0 = np.zeros((2))
 
@@ -21,7 +21,7 @@ class NMPC():
         self.gameheight = scale*render_size[1]
         self.checkpointradius = int(self.gameheight/(2*scale))
 
-        self.Np = 10
+        self.Np = 11
         self.Nvar = 7
         self.n_constraints = 5*(self.Np-1) + 5
 
@@ -32,7 +32,8 @@ class NMPC():
             self.checkpoints = np.load('checkpoints.npy')
             self.n_checkpoints = self.checkpoints.shape[0]
 
-            self.phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
+            self.theta0 = theta0
+            # self.phi0 = delta_angle_0 + math.acos(self.checkpoints[0,0]/np.linalg.norm(self.checkpoints[0,:]))
 
         self.model = nmpc_model.nmpc_model(self.Np)
         self.lb, self.ub, self.cl, self.cu = self.bounds_no_inits()
@@ -133,7 +134,7 @@ class NMPC():
         plt.ylabel('w')
         plt.plot(w, 'ko-')
 
-        # plt.savefig('fig_' + str(tick) + '.png')
+        plt.savefig('trajectory/fig_' + str(tick) + '.pdf', format='pdf')
         plt.clf()
 
     def get_checkpoint_index(self, checkpoint_x, checkpoint_y):
@@ -180,9 +181,9 @@ class NMPC():
         cl[5*(self.Np-1)+4] = cu[5*(self.Np-1)+4] = v0[1]
         return cl, cu
 
-    def set_heading(self, w, phi0):
-        dx = 10*math.cos(phi0 + w)
-        dy = 10*math.sin(phi0 + w)
+    def set_heading(self, w, theta0):
+        dx = 10*math.cos(theta0 + w)
+        dy = 10*math.sin(theta0 + w)
         return self.r0[0]+dx,self.r0[1]+dy
 
     def set_guess(self):

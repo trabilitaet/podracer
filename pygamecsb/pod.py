@@ -14,9 +14,9 @@ class csbpod():
     friction = 0.85
     M_PI2 = 2.0 * np.pi
 
-    def __init__(self, scale, checkpoint, *args, **kwargs):
+    def __init__(self, scale, checkpoint, theta, num, *args, **kwargs):
         self.scale = scale
-        self.theta = np.random.randint(0, 359) * np.pi / 180.0
+        self.theta = theta
         self.x = checkpoint[0]
         self.y = checkpoint[1]
         self.vx = 0
@@ -26,7 +26,10 @@ class csbpod():
         self.checkpointindex = 0
 
         # pygame objects
-        self.surface = pygame.image.load("img/pod.png")
+        if num == 1:
+            self.surface = pygame.image.load("img/pod.png")
+        else:
+            self.surface = pygame.image.load("img/pod-2.png")
         self.rect = self.surface.get_rect()
         #start position and centering
         self.rect.x = self.x - 64
@@ -103,20 +106,16 @@ class csbpod():
 
         # TODO: detect collision inbetween steps
         if dist < game.checkpointradius:
+            if self.checkpointindex == game.n_checkpoints:
+                game.running = False
             self.running = not (self.checkpointindex == (game.n_checkpoints - 1))
             self.log('checkpoint collision----------------------------------------------')
             self.log('target, coords, distance = ' + str(checkpoint) + ' ' +  str(coordinates) + ' ' + str(dist))
-            self.log('checkpoints remaining: ' + str(game.n_checkpoints - game.checkpointindex - 1))
-            self.checkpointindex = game.checkpointindex + 1
-            game.checkpointindex = self.checkpointindex
-            if game.checkpointindex == game.n_checkpoints - 1:
-                game.running = False
+            self.log('checkpoints remaining: ' + str(game.n_checkpoints - self.checkpointindex - 1))
+            self.checkpointindex = self.checkpointindex + 1
+            # game.checkpointindex = self.checkpointindex
 
     def getState(self, game):
-        # check for collision
-        # if not game.running:
-        #     return  0, 0, 0, 0, 0, 0, 0, 0, game.running
-        # else:
         coordinates = np.array([self.x, self.y])
         checkpoint = game.checkpoints[self.checkpointindex]
         dist = distance.euclidean(coordinates, checkpoint)
